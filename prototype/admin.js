@@ -1,9 +1,10 @@
-/* MIRC 2026 prototype: administration area (blueprint section 3, plus 4 and 10.4).
+/* MIRC prototype: administration area (blueprint section 3, plus 4 and 10.4).
    Each P.add({...}) is one page. "ref" points at the blueprint section, "note" says what is simulated. */
 'use strict';
 
-P.groups = ['Papers and decisions', 'Reviewers', 'Attendees', 'Program', 'Email', 'Website', 'Help'];
+P.groups = ['Conference', 'Papers and decisions', 'Reviewers', 'Attendees', 'Program', 'Email', 'Website', 'Help'];
 const GINFO = {
+  Conference: 'One website for every year: create the next edition, set its dates and topics, publish it when it is ready.',
   'Papers and decisions': 'Read the papers authors have sent in, accept or refuse them, and prepare the book of abstracts.',
   Reviewers: 'Choose who reviews which paper, and check that every paper has a reviewer.',
   Attendees: 'See who has registered, record payments, register someone, or add a new user account.',
@@ -13,13 +14,14 @@ const GINFO = {
   Help: 'Explanations, who can do what, and what this prototype does and does not do.',
 };
 const paperById = id => S.papers.find(p => p.id === id);
-const mailId = p => 'mirc2026:' + p.id;
+const mailId = p => `mirc${S.conf.year}:` + p.id;
 P.paperReviewers = p => S.reviewers.filter(r => r.topics.includes(p.topic) || r.papers.includes(p.id));
 const logP = (p, action, comment = '') => p.history.push({ date: today(), action, user: 'You (sample)', comment });
 const authorsOf = p => p.authors.map(a => a.name).join(', ');
 const roomOpts = () => [{ v: '', l: '(no room)' }, ...S.rooms.map(r => ({ v: r.id, l: r.name }))];
 const roomName = id => S.rooms.find(r => r.id === id)?.name || '';
-const dayLabel = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+const dayLabel = d => P.fmtDate(d, false);
+const DAYS = () => S.conf.days;
 const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 const sel = (key, label, options, all) => html`<div class="field"><label for="ui-${key}">${label}</label><select id="ui-${key}" data-ui="${key}" data-fk="${key}">
   ${[['', all], ...options.map(o => [o, o])].map(([v, l]) => html`<option value="${v}" ${raw(u(key, '') === v ? 'selected' : '')}>${l}</option>`)}</select></div>`;
@@ -37,8 +39,14 @@ P.add({
     const noRev = S.papers.filter(p => !P.paperReviewers(p).length).length;
     const pay = S.registrations.filter(r => r.status === 'Needs payment').length;
     const setBtn = (path, sets, text) => html`<button type="button" class="btn btn-small" data-act="sets" data-path="${path}" data-sets="${JSON.stringify(sets)}">${text}</button>`;
+    const draft = S.conf.status === 'draft', ready = P.readiness(P.edition()), todo = [...ready.stop, ...ready.note];
     return html`
     <p class="lead">Choose a card below, or use the menu on the left. Every page has a “Dashboard” link at the top, so you can always come back here.</p>
+    <section class="card" aria-labelledby="ed-h"><h2 id="ed-h">Conference edition: MIRC ${S.conf.year} ${P.badge(draft ? 'Draft' : 'Published')}</h2>
+      <p><strong>${P.datesText(S.conf.days)}</strong> · ${S.conf.place}${S.conf.venue ? ' · ' + S.conf.venue : ''}</p>
+      <p>${draft ? 'Only the team can see this edition. Visitors cannot see it until you publish it.' : 'Visitors can see this edition. What you save is visible at once.'} Everything in this menu belongs to this edition only.</p>
+      ${draft && todo.length ? html`<p><strong>Still to do before publishing:</strong></p><ul>${todo.map(x => html`<li>${x}</li>`)}</ul>` : ''}
+      <div class="actions"><a class="btn btn-primary" href="#/admin/edition">Edit the details</a><a class="btn btn-secondary" href="#/admin/editions">All editions (years)</a></div></section>
     <section class="card" aria-labelledby="attn"><h2 id="attn">Needs your attention</h2><ul class="attn">
       <li><span><strong>${initial}</strong> new paper${initial === 1 ? '' : 's'} (status “Initial”) waiting for a decision.</span> ${setBtn('/admin/papers', { 'papers.status': 'Initial' }, 'Show them')}</li>
       <li><span><strong>${noRev}</strong> paper${noRev === 1 ? ' has' : 's have'} no reviewer yet.</span> ${setBtn('/admin/review-papers', { 'rp.view': 'none' }, 'Show them')}</li>
@@ -66,7 +74,7 @@ P.add({
     return html`
     <p class="lead">These are the papers authors have sent in. Use the boxes to find papers, then choose “Open” to read one and decide.</p>
     <section class="card" aria-labelledby="f1"><h2 id="f1">Find papers</h2><div class="filters">
-      ${searchBox('papers.q', 'Search by title, author or number')}${sel('papers.status', 'Status', C.STATUSES, 'All statuses')}${sel('papers.type', 'Type of presentation', C.TYPES, 'All types')}${sel('papers.topic', 'Topic', C.TOPICS, 'All topics')}</div>
+      ${searchBox('papers.q', 'Search by title, author or number')}${sel('papers.status', 'Status', C.STATUSES, 'All statuses')}${sel('papers.type', 'Type of presentation', C.TYPES, 'All types')}${sel('papers.topic', 'Topic', S.topics, 'All topics')}</div>
       <button type="button" class="btn btn-secondary" data-act="clearfilters" data-prefix="papers.">Clear all filters</button></section>
     <section aria-labelledby="l1"><h2 id="l1">Papers: ${list.length} shown of ${S.papers.length} (sample)</h2>
       <div class="card bulk"><div class="field"><label for="bulk-action">With the ticked papers (${picked.size} ticked)</label>
@@ -121,7 +129,7 @@ Object.assign(P.act, {
 });
 const curPaper = () => paperById(P.cur.params.id);
 P.defForm('paper-meta', {
-  fields: () => [{ name: 'type', label: 'Type of presentation', type: 'select', options: C.TYPES }, { name: 'topic', label: 'Topic', type: 'select', options: C.TOPICS }],
+  fields: () => [{ name: 'type', label: 'Type of presentation', type: 'select', options: C.TYPES }, { name: 'topic', label: 'Topic', type: 'select', options: S.topics }],
   run: v => { const p = curPaper(); Object.assign(p, v); logP(p, 'Type/topic changed'); P.say('ok', 'Type and topic were saved.'); P.refresh(); },
 });
 P.defForm('paper-changes', {
@@ -175,7 +183,7 @@ P.add({
 /* ---- Book of abstracts (Proceedings): 3 steps ---- */
 const bookList = () => {
   if (u('book.gather', 'no') === 'no') return S.papers.filter(p => p.status === 'Accepted');
-  const tp = C.TOPICS.filter((t, i) => u('book.t' + i, true)), st = C.STATUSES.filter((s, i) => u('book.s' + i, s === 'Accepted'));
+  const tp = S.topics.filter((t, i) => u('book.t' + i, true)), st = C.STATUSES.filter((s, i) => u('book.s' + i, s === 'Accepted'));
   return S.papers.filter(p => tp.includes(p.topic) && st.includes(p.status));
 };
 const dayOfPaper = p => S.events.find(e => e.comms.some(c => c.paperId === p.id))?.date || '';
@@ -199,7 +207,7 @@ P.add({
       <div class="field"><label for="book-ed">Kind of book</label><select id="book-ed"><option>Book of abstracts</option></select></div>
       <fieldset class="field"><legend>Choose papers by your own rules?</legend>${rad('book.gather', 'no', 'No: use only accepted papers', 'no')}${rad('book.gather', 'yes', 'Yes: let me choose topics and statuses', 'no')}</fieldset>
       <fieldset class="field"><legend>How should papers be grouped?</legend>${rad('book.group', 'sessions', 'By session (topic)', 'sessions')}${rad('book.group', 'days', 'By day (from the program)', 'sessions')}</fieldset>
-      ${u('book.gather', 'no') === 'yes' ? html`<fieldset class="field"><legend>Topics to include</legend>${C.TOPICS.map((t, i) => chk('book.t' + i, t, true))}</fieldset>
+      ${u('book.gather', 'no') === 'yes' ? html`<fieldset class="field"><legend>Topics to include</legend>${S.topics.map((t, i) => chk('book.t' + i, t, true))}</fieldset>
         <fieldset class="field"><legend>Statuses to include</legend>${C.STATUSES.map((s, i) => chk('book.s' + i, s, s === 'Accepted'))}</fieldset>` : html`<p class="hint">Only papers with the status “Accepted” will be used.</p>`}
       <p><strong>${bookList().length}</strong> paper${bookList().length === 1 ? '' : 's'} match so far.</p>${nav('', '2')}</section>`;
     if (step === '2') return html`${bar}<section class="card"><h2>Step 2: Extra pages</h2>
@@ -230,7 +238,7 @@ P.add({
     <div class="actions"><button type="button" class="btn btn-primary" data-act="addreviewer">Add a reviewer</button><button type="button" class="btn btn-secondary" data-act="revcsv">Download the list (CSV file)</button></div>
     ${P.table({ caption: 'Reviewers', empty: 'There are no reviewers yet. Choose “Add a reviewer”.', rows: S.reviewers, cols: [
       { h: 'Reviewer', v: r => html`<strong>${r.name}</strong><br><span class="muted">${r.login} · ${r.email}</span>` },
-      { h: 'Papers assigned', v: r => { const rows = C.TOPICS.map(t => [t, ...counts(r, t)]).filter(x => x[1] > 0); return rows.length ? html`<ul class="plain">${rows.map(([t, n, tot]) => html`<li>${t}: ${n} of ${tot} paper${tot === 1 ? '' : 's'}</li>`)}</ul>` : 'No papers assigned yet'; } },
+      { h: 'Papers assigned', v: r => { const rows = S.topics.map(t => [t, ...counts(r, t)]).filter(x => x[1] > 0); return rows.length ? html`<ul class="plain">${rows.map(([t, n, tot]) => html`<li>${t}: ${n} of ${tot} paper${tot === 1 ? '' : 's'}</li>`)}</ul>` : 'No papers assigned yet'; } },
       { h: 'Actions', v: r => html`<button type="button" class="btn btn-small" data-act="revtopics" data-id="${r.login}">Choose topics</button> <button type="button" class="btn btn-small" data-act="revpapers" data-id="${r.login}">Choose single papers</button> <button type="button" class="btn btn-small btn-secondary" data-act="revdel" data-id="${r.login}">Remove</button>` }] })}`,
 });
 Object.assign(P.act, {
@@ -246,7 +254,7 @@ Object.assign(P.act, {
   },
   async revtopics(el) {
     const r = S.reviewers.find(x => x.login === el.dataset.id);
-    const v = await P.form({ title: `Topics for ${r.name}`, intro: 'This reviewer will see every paper of the ticked topics.', values: { topics: r.topics }, fields: [{ name: 'topics', label: 'Topics', type: 'checks', options: C.TOPICS }] });
+    const v = await P.form({ title: `Topics for ${r.name}`, intro: 'This reviewer will see every paper of the ticked topics.', values: { topics: r.topics }, fields: [{ name: 'topics', label: 'Topics', type: 'checks', options: S.topics }] });
     if (!v) return; r.topics = v.topics; P.say('ok', `Topics saved for ${r.name}.`); P.refresh();
   },
   async revpapers(el) {
@@ -278,7 +286,7 @@ P.add({
     return html`<p class="lead">See who reviews each paper, and add a reviewer where one is missing.</p>
       <section class="card" aria-labelledby="rf"><h2 id="rf">Show</h2><div class="filters">
         <fieldset class="field"><legend>Which papers?</legend>${rad('rp.view', 'all', 'All papers', 'all')}${rad('rp.view', 'none', 'Only papers without a reviewer', 'all')}</fieldset>
-        ${sel('rp.status', 'Status', ['Initial', 'Reviewed', 'Awaiting update'], 'All statuses')}${sel('rp.type', 'Type of presentation', C.TYPES, 'All types')}${sel('rp.topic', 'Topic', C.TOPICS, 'All topics')}</div>
+        ${sel('rp.status', 'Status', ['Initial', 'Reviewed', 'Awaiting update'], 'All statuses')}${sel('rp.type', 'Type of presentation', C.TYPES, 'All types')}${sel('rp.topic', 'Topic', S.topics, 'All topics')}</div>
         <button type="button" class="btn btn-secondary" data-act="clearfilters" data-prefix="rp.">Clear all filters</button></section>
       <h2>${list.length} paper${list.length === 1 ? '' : 's'}</h2>
       ${P.table({ caption: 'Papers and their reviewers', empty: 'No paper matches. Try “Clear all filters”.', rows: list, cols: [
@@ -310,7 +318,11 @@ const REGFIELDS = () => [
   { name: 'language', label: 'Language', type: 'select', options: [{ v: 'en', l: 'English' }, { v: 'fr', l: 'French' }, { v: 'es', l: 'Spanish' }] },
   { name: 'phone', label: 'Phone number' }, { name: 'institution', label: 'Institution' }, { name: 'address', label: 'Mailing address' },
   { name: 'country', label: 'Country of your organization', hint: 'A short code such as PH, as on the live site.' }, { name: 'extra', label: 'More information', type: 'textarea', rows: 3 }];
-P.REGFIELDS = REGFIELDS;
+/* P.REGFIELDS(true) = the public form of the edition, shaped by "Registration form" settings; no argument = every field (administrators). */
+P.REGFIELDS = forVisitors => {
+  const all = REGFIELDS(), cfg = S.settings.regFields || {};
+  return !forVisitors ? all : all.filter(f => ['last', 'first', 'email'].includes(f.name) || cfg[f.name] !== 'off').map(f => cfg[f.name] === 'required' ? { ...f, required: true } : f);
+};
 const regRows = () => {
   const on = { 'Pre-registered': u('reg.pre', true), 'Needs payment': u('reg.pay', true), Registered: u('reg.ok', true) }, q = u('reg.q', '').toLowerCase();
   return S.registrations.filter(r => on[r.status] && (!q || (r.first + ' ' + r.last + ' ' + r.email).toLowerCase().includes(q)));
@@ -348,7 +360,7 @@ Object.assign(P.act, {
   async regmail(el) {
     const r = regById(el.dataset.id);
     if (!await P.confirm({ title: 'Send the registration confirmation?', ok: 'Yes, record it', text: `A confirmation email to ${r.email} would be sent. In this prototype no email is sent; a line is added to “Sent emails”.` })) return;
-    P.logMail('[MIRC 2026] Registration confirmation', r.email, 'Registration confirmation (sample)'); P.say('ok', `A confirmation to ${r.email} was recorded in “Sent emails”. No real email was sent.`);
+    P.logMail(`[MIRC ${S.conf.year}] Registration confirmation`, r.email, 'Registration confirmation (sample)'); P.say('ok', `A confirmation to ${r.email} was recorded in “Sent emails”. No real email was sent.`);
   },
   async regedit(el) {
     const r = regById(el.dataset.id);
@@ -401,36 +413,56 @@ P.add({
 /* ================= Program ================= */
 const EVLBL = { Session: 'Session (talks on one topic)', 'Speech/Intervention': 'Speech (for example an opening)', Logistics: 'Practical item (for example registration)', Break: 'Break (coffee or lunch)', Tour: 'Tour or outing' };
 const eventTitle = e => e.type === 'Session' ? e.topic : e.title;
-const dayOpts = () => C.DAYS.map(d => ({ v: d, l: dayLabel(d) }));
+const dayOpts = () => DAYS().map(d => ({ v: d, l: dayLabel(d) }));
 const eventFields = type => {
-  const base = [{ name: 'date', label: 'Day', type: 'select', required: true, options: dayOpts() }, { name: 'start', label: 'Starts at', type: 'time', step: 300, required: true }, { name: 'end', label: 'Ends at', type: 'time', step: 300, required: true }];
+  const base = [{ name: 'date', label: 'Day', type: 'select', required: true, options: dayOpts() }, { name: 'start', label: 'Starts at', type: 'time', required: true, row: true }, { name: 'end', label: 'Ends at', type: 'time', required: true, row: true }];
   const room = { name: 'room', label: 'Room', type: 'select', options: roomOpts() }, file = { name: 'file', label: 'Attach a file (optional)', type: 'file', hint: 'Only the file name is kept in this prototype.' };
   const title = { name: 'title', label: 'Title', required: true }, desc = { name: 'description', label: 'Description', type: 'textarea', rows: 3 };
-  return { Session: [...base, { name: 'topic', label: 'Topic of the session', type: 'select', required: true, options: [{ v: '', l: '-- Choose a topic --' }, ...C.TOPICS] }, { name: 'chair', label: 'Chair or speaker' }, room],
+  return { Session: [...base, { name: 'topic', label: 'Topic of the session', type: 'select', required: true, options: [{ v: '', l: '-- Choose a topic --' }, ...S.topics] }, { name: 'chair', label: 'Chair or speaker' }, room],
     'Speech/Intervention': [...base, { name: 'chair', label: 'Chair' }, title, room, file], Logistics: [...base, title, desc, file],
     Break: [...base, { name: 'breakType', label: 'Kind of break', type: 'select', options: ['Coffee break', 'Lunch', 'Other'], hint: 'The list of break kinds is not confirmed in the blueprint.' }, title, room, file], Tour: [...base, title, desc, file] }[type];
 };
-const timeCheck = v => v.end && v.start && v.end <= v.start ? { end: 'The end time must be after the start time.' } : {};
 const byStart = (a, b) => a.start.localeCompare(b.start);
+const clash = (a, b) => a.start < b.end && b.start < a.end;              // two time ranges overlap (touching ends are fine)
+/* Checks on an event being saved: end after start, and a room cannot be in two places at once. self = the event being changed, if any. */
+const eventCheck = (v, self) => {
+  if (v.start && v.end && v.end <= v.start) return { end: 'The end time must be after the start time.' };
+  const other = v.room && v.start && v.end && S.events.find(x => x !== self && x.room === v.room && x.date === v.date && clash(x, v));
+  return other ? { room: `${roomName(v.room)} is already used on ${dayLabel(v.date)} from ${other.start} to ${other.end} (${eventTitle(other)}). Choose another room or another time.` } : {};
+};
+/* Checks on a talk: end after start, inside its session, and not on top of another talk of the same session. */
+const talkCheck = (v, ev) => {
+  if (v.start && v.end && v.end <= v.start) return { end: 'The end time must be after the start time.' };
+  if (v.start && v.end && (v.start < ev.start || v.end > ev.end)) return { start: `A talk must fit inside its session, which runs from ${ev.start} to ${ev.end}.` };
+  const other = v.start && v.end && ev.comms.find(c => clash(c, v));
+  return other ? { start: `This overlaps another talk of the session (${other.start} to ${other.end}). Choose a free time.` } : {};
+};
+/* The schedule opens on the busiest day (or the first day if nothing is planned yet). */
+const busyDay = () => { const n = d => S.events.filter(e => e.date === d).length; return DAYS().reduce((a, d) => n(d) > n(a) ? d : a, DAYS()[0]); };
+const curDay = () => DAYS().includes(u('sched.day', '')) ? u('sched.day') : busyDay();
+const NB = ' ';
 P.add({
   path: '/admin/schedule', area: 'admin', group: 'Program', nav: true, label: 'Schedule', title: 'Schedule: days, sessions and talks',
   blurb: 'Add sessions, breaks and talks for each day.',
   ref: '3.3.3 Program > Administration (event editor: Session, Speech/Intervention, Logistics, Break, Tour; add a communication; CSV export)',
-  note: 'Adding, changing and deleting events and talks, and the CSV download, work on the sample data. Break kinds and the file attachment are simplified (names only).',
+  note: 'The calendar shows the conference days of the edition you are working on (set under Edition details). Adding, changing and deleting events and talks, the room and time checks, and the CSV download work on the sample data. Break kinds and the file attachment are simplified (names only).',
   view: () => {
-    const day = u('sched.day', C.DAYS[2]), evs = S.events.filter(e => e.date === day).sort(byStart);
-    return html`<p class="lead">Pick a day, then add or change what happens that day. A “session” holds talks (papers).</p>
-      ${P.tabs('sched.day', C.DAYS.map(d => [d, dayLabel(d)]), 'Choose a day', day)}
+    if (!DAYS().length) return html`<p class="empty">This edition has no conference days yet. Choose them under <a href="#/admin/edition">Edition details</a>, “Dates and deadlines”.</p>`;
+    const day = curDay(), evs = S.events.filter(e => e.date === day).sort(byStart), marks = {};
+    S.events.forEach(e => { marks[e.date] = (marks[e.date] || 0) + 1; });
+    return html`<p class="lead">Click a day on the calendar, then add or change what happens that day. A “session” holds talks (papers).</p>
+      <section class="card cal-card" aria-label="Conference calendar">${P.cal({ id: 'sched', label: 'Conference calendar: choose a day', value: [day], allowed: DAYS(), marks, noun: 'event', span: true, pick: 'schedday' })}</section>
       <div class="actions"><button type="button" class="btn btn-primary" data-act="evadd" data-day="${day}">Add an event on this day</button><button type="button" class="btn btn-secondary" data-act="schedcsv">Download the whole program (CSV file)</button></div>
-      <h2>${dayLabel(day)}</h2>
-      ${evs.length ? html`<div class="table-wrap"><table><caption class="sr-only">Events on ${dayLabel(day)}</caption><thead><tr><th scope="col">Time</th><th scope="col">Kind</th><th scope="col">What</th><th scope="col" class="col-actions">Actions</th></tr></thead><tbody>
-        ${evs.map(e => html`<tr><td data-label="Time">${e.start} to ${e.end}</td><td data-label="Kind">${EVLBL[e.type].split(' (')[0]}</td><td data-label="What"><strong>${eventTitle(e)}</strong>${e.room ? html`<br><span class="muted">${roomName(e.room)}</span>` : ''}${e.chair ? html`<br><span class="muted">Chair: ${e.chair}</span>` : ''}</td>
+      <h2>${dayLabel(day)}</h2><p class="muted">${evs.length ? `${evs.length} item${evs.length === 1 ? '' : 's'} planned, in time order.` : ''}</p>
+      ${evs.length ? html`<div class="table-wrap"><table><caption class="sr-only">Events on ${dayLabel(day)}</caption><thead><tr><th scope="col">Time</th><th scope="col">Kind</th><th scope="col">What</th><th scope="col">Room</th><th scope="col" class="col-actions">Actions</th></tr></thead><tbody>
+        ${evs.map(e => html`<tr><td data-label="Time" class="nowrap">${e.start}${NB}to${NB}${e.end}</td><td data-label="Kind">${EVLBL[e.type].split(' (')[0]}</td><td data-label="What"><strong>${eventTitle(e)}</strong>${e.chair ? html`<br><span class="muted">Chair: ${e.chair}</span>` : ''}</td><td data-label="Room">${roomName(e.room) || html`<span class="muted">No room</span>`}</td>
           <td data-label="Actions" class="col-actions"><div class="row-actions"><button type="button" class="btn btn-small" data-act="evedit" data-id="${e.id}">Change</button> ${e.type === 'Session' ? html`<button type="button" class="btn btn-small" data-act="comadd" data-id="${e.id}">Add a talk</button>` : ''} <button type="button" class="btn btn-small btn-secondary" data-act="evdel" data-id="${e.id}">Delete</button></div></td></tr>
-          ${e.comms.slice().sort(byStart).map(c => html`<tr class="sub"><td data-label="Time">${c.start} to ${c.end}</td><td data-label="Kind">Talk</td><td data-label="What">↳ ${paperById(c.paperId)?.title || '(paper deleted)'}${c.speaker ? html`<br><span class="muted">Speaker: ${c.speaker}</span>` : ''}</td>
+          ${e.comms.slice().sort(byStart).map(c => html`<tr class="sub"><td data-label="Time" class="nowrap">${c.start}${NB}to${NB}${c.end}</td><td data-label="Kind">Talk</td><td data-label="What">↳ ${paperById(c.paperId)?.title || '(paper deleted)'}${c.speaker ? html`<br><span class="muted">Speaker: ${c.speaker}</span>` : ''}</td><td data-label="Room"></td>
             <td data-label="Actions" class="col-actions"><div class="row-actions"><button type="button" class="btn btn-small btn-secondary" data-act="comdel" data-ev="${e.id}" data-id="${c.paperId}">Remove talk</button></div></td></tr>`)}`)}</tbody></table></div>` : html`<p class="empty">Nothing is planned for this day yet. Choose “Add an event on this day”.</p>`}`;
   },
 });
 Object.assign(P.act, {
+  schedday(el) { P.ui['sched.day'] = el.dataset.date; P.refresh(); const n = S.events.filter(e => e.date === el.dataset.date).length; $('#live').textContent = `Showing ${P.fmtDate(el.dataset.date)}: ${n ? n + ' item' + (n === 1 ? '' : 's') + ' planned' : 'nothing planned yet'}.`; },
   async evadd(el) { await eventDialog(null, el.dataset.day); },
   async evedit(el) { await eventDialog(S.events.find(e => e.id === el.dataset.id)); },
   async evdel(el) {
@@ -442,9 +474,9 @@ Object.assign(P.act, {
     const e = S.events.find(x => x.id === el.dataset.id), used = new Set(S.events.flatMap(x => x.comms.map(c => c.paperId)));
     const free = S.papers.filter(p => p.status === 'Accepted' && p.topic === e.topic && !used.has(p.id));
     if (!free.length) return P.show('No paper to add', html`<p>There is no accepted paper on the topic “${e.topic}” that is not already in the program.</p>`);
-    const v = await P.form({ title: 'Add a talk to this session', intro: `Session: ${e.topic}`, submit: 'Add the talk', values: { start: e.start, end: e.end }, check: timeCheck, fields: [
+    const v = await P.form({ title: 'Add a talk to this session', intro: `Session: ${e.topic}, ${e.start} to ${e.end}`, submit: 'Add the talk', values: { start: e.start, end: e.end }, check: v => talkCheck(v, e), fields: [
       { name: 'paperId', label: 'Paper', type: 'select', required: true, options: [{ v: '', l: '-- Choose a paper --' }, ...free.map(p => ({ v: p.id, l: p.title }))] },
-      { name: 'start', label: 'Starts at', type: 'time', step: 300, required: true }, { name: 'end', label: 'Ends at', type: 'time', step: 300, required: true }, { name: 'speaker', label: 'Speaker' }] });
+      { name: 'start', label: 'Starts at', type: 'time', required: true, row: true }, { name: 'end', label: 'Ends at', type: 'time', required: true, row: true }, { name: 'speaker', label: 'Speaker' }] });
     if (!v) return; e.comms.push(v); P.say('ok', 'The talk was added to the session.'); P.refresh();
   },
   async comdel(el) {
@@ -460,7 +492,7 @@ async function eventDialog(e, day) {
     const v = await P.form({ title: 'Add an event: step 1 of 2', submit: 'Next', fields: [{ name: 'type', label: 'What kind of event is it?', type: 'select', required: true, options: [{ v: '', l: '-- Choose a kind --' }, ...C.EVENT_TYPES.map(t => ({ v: t, l: EVLBL[t] }))] }] });
     if (!v) return; type = v.type;
   }
-  const v = await P.form({ title: `${e ? 'Change' : 'Add'} event: ${EVLBL[type].split(' (')[0]}${e ? '' : ' (step 2 of 2)'}`, submit: e ? 'Save changes' : 'Add the event', fields: eventFields(type), values: e ? { ...e } : { date: day || C.DAYS[2] }, check: timeCheck });
+  const v = await P.form({ title: `${e ? 'Change' : 'Add'} event: ${EVLBL[type].split(' (')[0]}${e ? '' : ' (step 2 of 2)'}`, submit: e ? 'Save changes' : 'Add the event', fields: eventFields(type), values: e ? { ...e } : { date: day || curDay() }, check: v => eventCheck(v, e) });
   if (!v) return;
   if (e) { if (!v.file) v.file = e.file; Object.assign(e, v); } else S.events.push({ id: 'e' + Date.now(), type, title: '', topic: '', chair: '', room: '', description: '', breakType: '', file: '', comms: [], ...v });
   P.ui['sched.day'] = v.date; P.say('ok', `The event was ${e ? 'saved' : 'added'}.`); P.refresh();
@@ -681,7 +713,7 @@ Object.assign(P.act, {
   async hbedit(el) { const b = S.homeBlocks.find(x => x.id === el.dataset.id), v = await P.form({ title: 'Change block', fields: blockFields(), values: b }); if (!v) return; Object.assign(b, v); P.say('ok', 'The block was saved.'); P.refresh(); },
   async hbdel(el) { const b = S.homeBlocks.find(x => x.id === el.dataset.id); if (!await P.confirm({ title: 'Delete this block?', danger: true, ok: 'Yes, delete it', text: `“${b.title}” will disappear from the home page.` })) return; S.homeBlocks = S.homeBlocks.filter(x => x !== b); P.say('ok', 'The block was deleted.'); P.refresh(); },
 });
-const newsFields = () => [{ name: 'title', label: 'Title', required: true }, { name: 'content', label: 'Content', type: 'textarea', rows: 6, required: true }, { name: 'date', label: 'Date', type: 'date', required: true, value: today() }];
+const newsFields = () => [{ name: 'title', label: 'Title', required: true }, { name: 'content', label: 'Content', type: 'textarea', rows: 6, required: true }, { name: 'date', label: 'Date of the news', type: 'calendar', required: true, value: today() }];
 P.add({
   path: '/admin/news', area: 'admin', group: 'Website', nav: true, label: 'News', title: 'News', blurb: 'Post short news items.',
   ref: '3.2 Website > News (title, content, date, action; also an RSS feed)', note: 'Add, change and delete work, and news shows on the public home page. The RSS feed needs the server part.',
@@ -729,6 +761,11 @@ P.defForm('set-general', {
   check: v => v.languages.length && !v.languages.includes(v.defaultLanguage) ? { defaultLanguage: 'The main language must be one of the ticked languages.' } : {},
   run: v => { Object.assign(S.settings, v); P.say('ok', 'The general settings were saved. (Switching languages is not built in this prototype; the blueprint assumes English only to start.)'); P.refresh(); },
 });
+P.defForm('set-look', {
+  fields: () => [{ name: 'banner', label: 'Banner message (optional)', hint: 'A short line shown in a bar above the header of the public site, for example “Registration closes on 31 August”. Leave empty for no banner.' },
+    { name: 'accent', label: 'Accent color of this edition', type: 'select', options: C.ACCENTS.map(([v, l]) => ({ v, l })), hint: 'Used for the line under the header. Only colors of the blueprint palette are offered, so text stays readable.' }],
+  run: v => { Object.assign(S.conf, v); P.say('ok', 'The banner and accent color were saved for this edition. Open the public website to see them.'); P.refresh(); },
+});
 const HTYPES = ['Header quick form configuration', 'Customize your header in HTML', 'Header picture'];
 P.defForm('set-header', {
   fields: () => {
@@ -743,14 +780,15 @@ P.defForm('set-header', {
 });
 P.act.hdrtype = el => { P.fe['set-header'] = { vals: { ...P.readFields(el.form, P.formDefs['set-header'].fields()), type: el.value }, errs: {} }; P.ui['hdr.type'] = el.value; P.refresh(); };
 P.add({
-  path: '/admin/settings', area: 'admin', group: 'Website', nav: true, label: 'Site settings', title: 'Site settings: languages, header and colors', blurb: 'Languages, contact email, header and colors.',
+  path: '/admin/settings', area: 'admin', group: 'Website', nav: true, label: 'Site settings', title: 'Site settings: languages, header, banner and colors', blurb: 'Languages, contact email, header, banner and colors.',
   ref: '3.2 Website > General, Header, Appearance; 9.3 palette',
-  note: 'General and Header save and change the public preview. Colors is read-only: the live site\'s preset themes were not described, so no theme switching is built.',
+  note: 'General, Header and Banner and accent save and change the public preview (each edition keeps its own banner and accent). Colors is read-only: the live site\'s preset themes were not described, so there are no free color pickers; the accent is a choice among three palette colors.',
   view: () => {
     const tab = u('set.tab', 'general');
-    return html`${P.tabs('set.tab', [['general', 'Languages and contact'], ['header', 'Header'], ['colors', 'Colors']], 'Settings sections', tab)}
+    return html`${P.tabs('set.tab', [['general', 'Languages and contact'], ['header', 'Header'], ['look', 'Banner and accent'], ['colors', 'Colors']], 'Settings sections', tab)}
       ${tab === 'general' ? html`<section class="card"><h2>Languages and contact</h2>${P.formHTML('set-general', S.settings)}</section>`
       : tab === 'header' ? html`<section class="card"><h2>Header</h2><p>The top part of the public website.</p>${P.formHTML('set-header', S.settings.header)}</section>`
+      : tab === 'look' ? html`<section class="card"><h2>Banner and accent color</h2><p>These belong to <strong>MIRC ${S.conf.year}</strong> only. The logo and title are on the “Header” tab.</p>${P.formHTML('set-look', { banner: S.conf.banner, accent: S.conf.accent })}</section>`
         : html`<section class="card"><h2>Colors used on this website</h2><p>These colors come from the conference images. “Exact” means the value was measured on a flat area. “Estimate” means it was measured on a gradient or photo (blueprint section 9.3). Changing colors is not offered here.</p>
         ${P.table({ caption: 'Color palette', empty: '', rows: C.PALETTE, cols: [{ h: 'Sample', v: c => html`<span class="swatch" style="background:${c[1]}" aria-hidden="true"></span>` }, { h: 'Name', v: c => c[0] }, { h: 'Code', v: c => c[1] }, { h: 'How sure', v: c => c[2] === 'exact' ? 'Exact' : 'Estimate' }, { h: 'Used for', v: c => c[3] }] })}</section>`}`;
   },

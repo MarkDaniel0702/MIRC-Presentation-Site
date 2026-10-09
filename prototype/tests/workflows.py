@@ -32,6 +32,12 @@ with sync_playwright() as p:
         pg.wait_for_function("!document.querySelector('dialog[open]')")
         pg.wait_for_timeout(150)
 
+    def settime(field, hhmm):
+        # the time picker is two boxes (hour, minutes)
+        h, m = hhmm.split(":")
+        dlg().locator(f"#f-{field}-h").select_option(h)
+        dlg().locator(f"#f-{field}-m").select_option(m)
+
     msg = lambda: pg.locator("#fb .alert").inner_text() if pg.locator("#fb .alert").count() else ""
     S = lambda expr: pg.evaluate("S." + expr)
 
@@ -163,13 +169,18 @@ with sync_playwright() as p:
     check("schedule: step 1 requires a kind", "Please choose one" in dlg().inner_text())
     dlg().locator("#f-type").select_option("Break")
     dlg().get_by_role("button", name="Next").click()
-    dlg().locator("#f-start").fill("11:00")
-    dlg().locator("#f-end").fill("10:00")
+    dlg().get_by_role("button", name="Add the event").click()
+    check("schedule: empty time boxes -> plain message", "Please choose a time" in dlg().inner_text(), dlg().inner_text()[-200:])
+    dlg().locator("#f-start-h").select_option("11")
+    dlg().get_by_role("button", name="Add the event").click()
+    check("schedule: only the hour chosen -> asks for both", "both the hour and the minutes" in dlg().inner_text())
+    settime("start", "11:00")
+    settime("end", "10:00")
     dlg().locator("#f-title").fill("Test break")
     dlg().get_by_role("button", name="Add the event").click()
     check("schedule: end before start rejected", "after the start" in dlg().inner_text())
-    dlg().locator("#f-start").fill("16:00")
-    dlg().locator("#f-end").fill("16:30")
+    settime("start", "16:00")
+    settime("end", "16:30")
     dlg().get_by_role("button", name="Add the event").click()
     check("schedule: event added", rows() > n and "Test break" in pg.inner_text("main"))
     pg.get_by_role("button", name=re.compile("Add a talk")).first.click()

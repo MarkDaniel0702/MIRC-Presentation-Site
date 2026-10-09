@@ -70,6 +70,20 @@ with sync_playwright() as p:
             pg.evaluate(f"location.hash='{path}'")
             pg.wait_for_selector("main h1")
             pg.screenshot(path=str(shots / f"{name}-{tag}.png"), full_page=False)
+        # public menu drawer: opens, fits the screen, text contrast passes while open, Esc closes it
+        pg.evaluate("location.hash='/site'")
+        pg.wait_for_selector("main h1")
+        pg.get_by_role("button", name="Menu").first.click()
+        pg.wait_for_timeout(300)                                          # let the slide-in finish
+        box = pg.locator("#drawer").bounding_box()
+        if not (box and box["x"] >= 0 and box["x"] + box["width"] <= width and box["height"] >= height - 1):
+            problems.append((name, "-", "/site", f"drawer does not fit the screen: {box}"))
+        for f in pg.evaluate(CONTRAST_JS):
+            problems.append((name, "-", "/site", "drawer contrast " + json.dumps(f)))
+        pg.screenshot(path=str(shots / f"{name}-site-drawer.png"))
+        pg.keyboard.press("Escape")
+        if pg.locator("#drawer").is_visible():
+            problems.append((name, "-", "/site", "Esc did not close the drawer"))
         if name == "phone":
             pg.evaluate("location.hash='/admin/papers'")
             pg.wait_for_selector("main h1")

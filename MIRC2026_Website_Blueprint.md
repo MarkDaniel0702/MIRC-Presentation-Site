@@ -1169,7 +1169,7 @@ Phases 2 and 3 can ship separately. A public site can go live after Phase 2, whi
 | A1 | The observed Sciencesconf features are the functional baseline for the rebuild | Scope shrinks or grows. Revisit sections 3 and 16 |
 | A2 | Traffic is low, with spikes near deadlines and event days | Choose a higher hosting tier and add load testing earlier |
 | A3 | English is the only interface language | Add internationalization from Phase 1 instead of later (D7) |
-| A4 | One conference per deployment, with an `edition_year` field for reuse | Multi-conference support would need a larger data model |
+| A4 | One conference per deployment, with an `edition_year` field for reuse. **Update (prototype v3):** the prototype now holds several editions (2026 published, 2027 draft) in one site, each with its own data and a draft/published state; see `prototype/README.md` section 10. Section 7.1 already puts `conference_id` on almost every table, so this needs no larger model, but it adds a status flag on `conference` and an Administrator-only publish rule | Multi-conference support would need a larger data model |
 | A5 | Reviewers are assigned manually by topic or paper, as on the live site | Add automatic assignment |
 | A6 | Registration has no online payment in the first release (a sample row on the live site showed 0 €) | Add a payment provider before Phase 3 ends (D5) |
 | A7 | Light mode only | Add the dark tokens from 9.8 |

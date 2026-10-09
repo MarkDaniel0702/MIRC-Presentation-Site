@@ -1,9 +1,23 @@
-/* MIRC 2026 prototype: shared core (router, safe HTML templates, forms, dialogs, feedback).
-   Everything runs in the browser. S is an in-memory copy of the sample data: changes last until reload. */
+/* MIRC prototype: shared core (router, safe HTML templates, forms, dialogs, feedback, edition switching).
+   Everything runs in the browser. ED.list holds one in-memory record per conference edition: changes last until reload.
+   S is a window onto the edition being worked on, so S.papers, S.events ... always mean "this edition".
+   People (users) are shared by all editions, as in blueprint 7.1 (the user table has no conference id). */
 'use strict';
 
 const P = window.P = { routes: [], ui: {}, sel: {}, fe: {}, act: {}, formDefs: {}, shells: {}, msg: null, keep: false, navOpen: new Set(), groups: [] };
-const S = P.S = structuredClone(DATA);
+const ED = P.ED = { list: structuredClone(EDITIONS), cur: EDITIONS[0].conf.id, users: structuredClone(EDITIONS[0].users) };
+ED.list.forEach(e => { delete e.users; });
+P.edition = id => ED.list.find(e => e.conf.id === (id || ED.cur));
+const S = P.S = new Proxy({}, {
+  get: (_, k) => k === 'users' ? ED.users : P.edition()[k],
+  set: (_, k, v) => { if (k === 'users') ED.users = v; else P.edition()[k] = v; return true; },
+});
+/* Switch the edition everyone is looking at. Filters, selections and half-filled forms belong to the old edition, so they are dropped. */
+P.useEdition = id => {
+  if (id === ED.cur || !P.edition(id)) return;
+  ED.cur = id; P.sel = {}; P.fe = {};
+  for (const k of Object.keys(P.ui)) if (k !== 'site.role') delete P.ui[k];
+};
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -38,7 +52,7 @@ P.goSay = (path, kind, text) => { P.msg = { kind, text }; P.keep = true; P.go(pa
 
 /* ---------- form fields: labels, hints, plain-language error messages ---------- */
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const isGroup = f => f.type === 'radio' || f.type === 'checks';
+const isGroup = f => ['radio', 'checks', 'calendar', 'time'].includes(f.type);
 const norm = f => (f.options || []).map(o => typeof o === 'string' ? { v: o, l: o } : o);
 function fieldHTML(f, vals, errs) {
   const id = 'f-' + f.name, v = vals[f.name] ?? f.value ?? (f.type === 'checks' ? [] : ''), err = errs[f.name];
@@ -48,6 +62,10 @@ function fieldHTML(f, vals, errs) {
   const hint = f.hint ? html`<p class="hint" id="${id}-h">${f.hint}</p>` : '';
   const error = err ? html`<p class="err" id="${id}-e"><span aria-hidden="true">✖</span> <strong>Problem:</strong> ${err}</p>` : '';
   const o = norm(f);
+  if (f.type === 'calendar' || f.type === 'time') {
+    const body = f.type === 'calendar' ? P.calField(f, v, id) : P.timeField(f, v, id);
+    return html`<fieldset class="field${err ? ' has-error' : ''}" id="${id}" tabindex="-1" ${raw(desc ? `aria-describedby="${desc}"` : '')}><legend>${label}</legend>${hint}${body}${error}</fieldset>`;
+  }
   if (isGroup(f)) {
     const t = f.type === 'radio' ? 'radio' : 'checkbox';
     return html`<fieldset class="field${err ? ' has-error' : ''}" id="${id}" tabindex="-1" ${raw(desc ? `aria-describedby="${desc}"` : '')}><legend>${label}</legend>${hint}
@@ -63,11 +81,20 @@ function fieldHTML(f, vals, errs) {
   else ctl = html`<input id="${id}" type="${f.type || 'text'}" ${raw(common)} value="${v}" ${raw(f.step ? `step="${f.step}"` : '')} ${raw(f.min != null ? `min="${f.min}"` : '')} ${raw(f.autocomplete ? `autocomplete="${f.autocomplete}"` : '')}>`;
   return html`<div class="field${err ? ' has-error' : ''}"><label for="${id}">${label}</label>${hint}${ctl}${error}</div>`;
 }
-P.fieldsHTML = (fields, vals = {}, errs = {}) => html`${fields.map(f => fieldHTML(f, vals, errs))}`;
+/* Neighbouring fields marked row:true sit side by side (for example "Starts at" and "Ends at"); they stack on narrow screens. */
+P.fieldsHTML = (fields, vals = {}, errs = {}) => {
+  const out = [];
+  for (let i = 0; i < fields.length; i++) {
+    if (!fields[i].row) { out.push(fieldHTML(fields[i], vals, errs)); continue; }
+    const run = []; while (i < fields.length && fields[i].row) run.push(fieldHTML(fields[i++], vals, errs)); i--;
+    out.push(html`<div class="fields-row">${run}</div>`);
+  }
+  return html`${out}`;
+};
 P.readFields = (form, fields) => {
   const fd = new FormData(form), o = {};
   for (const f of fields) {
-    const x = f.type === 'checks' ? fd.getAll(f.name) : f.type === 'file' ? (fd.get(f.name)?.name || '') : (fd.get(f.name) ?? '');
+    const x = f.type === 'checks' ? fd.getAll(f.name) : f.type === 'file' ? (fd.get(f.name)?.name || '') : f.type === 'time' ? P.readTime(fd, f.name) : (fd.get(f.name) ?? '');
     o[f.name] = typeof x === 'string' ? x.trim() : x;
   }
   return o;
@@ -76,10 +103,12 @@ P.validate = (fields, vals, check) => {
   const e = {};
   for (const f of fields) {
     const v = vals[f.name], empty = Array.isArray(v) ? !v.length : v === '';
-    if (f.required && empty) { e[f.name] = f.type === 'checks' ? 'Please tick at least one box.' : (f.type === 'select' || f.type === 'radio') ? 'Please choose one.' : 'Please fill in this box.'; continue; }
+    if (f.type === 'time' && v && !/^\d\d:\d\d$/.test(v)) { e[f.name] = 'Please choose both the hour and the minutes.'; continue; }   // one of the two boxes was left empty
+    if (f.required && empty) { e[f.name] = f.type === 'checks' ? 'Please tick at least one box.' : f.type === 'calendar' ? (f.multi ? 'Please click at least one day on the calendar.' : 'Please click a date on the calendar.') : f.type === 'time' ? 'Please choose a time (hour and minutes).' : (f.type === 'select' || f.type === 'radio') ? 'Please choose one.' : 'Please fill in this box.'; continue; }
     if (empty) continue;
     if (f.type === 'email' && !EMAIL.test(v)) e[f.name] = 'Please type an email address like name@example.org.';
     else if (f.type === 'number' && (isNaN(v) || (f.min != null && +v < f.min))) e[f.name] = `Please type a number${f.min != null ? ' of ' + f.min + ' or more' : ''}.`;
+    else if (f.type === 'calendar' && !String(v).split(',').every(P.isDate)) e[f.name] = 'That date is not valid. Please click a date on the calendar.';
     else if (f.check) { const m = f.check(v, vals); if (m) e[f.name] = m; }
   }
   if (check) Object.assign(e, check(vals) || {});
@@ -158,9 +187,9 @@ P.table = ({ cols, rows, empty, caption }) => rows.length ? html`<div class="tab
   <tbody>${rows.map(r => html`<tr>${cols.map(c => { const v = typeof c.v === 'function' ? c.v(r) : r[c.v]; return html`<td data-label="${c.h}" class="${colCls(c)}">${isAct(c) ? html`<div class="row-actions">${v}</div>` : v}</td>`; })}</tr>`)}</tbody></table></div>`
   : html`<p class="empty">${empty}</p>`;
 const ST = { Accepted: ['✔', 'accepted'], Refused: ['✖', 'refused'], 'Awaiting update': ['!', 'awaiting'], Reviewed: ['◉', 'reviewed'], Initial: ['○', 'initial'], 'No review': ['–', 'noreview'],
-  Registered: ['✔', 'accepted'], 'Needs payment': ['!', 'awaiting'], 'Pre-registered': ['○', 'initial'] };
+  Registered: ['✔', 'accepted'], 'Needs payment': ['!', 'awaiting'], 'Pre-registered': ['○', 'initial'], Published: ['✔', 'accepted'], Draft: ['○', 'initial'] };
 P.badge = s => html`<span class="badge st-${ST[s][1]}"><span aria-hidden="true">${ST[s][0]}</span> ${s}</span>`;
-P.tabs = (key, items, label, cur) => html`<div class="tabs" role="group" aria-label="${label}">${items.map(([v, l]) =>
+P.tabs = (key, items, label, cur, cls = '') => html`<div class="tabs ${cls}" role="group" aria-label="${label}">${items.map(([v, l]) =>
   html`<button type="button" class="tab" aria-pressed="${String(cur === v)}" data-act="setui" data-k="${key}" data-v="${v}" data-fk="tab-${key}-${v}">${l}</button>`)}</div>`;
 P.csv = (name, rows) => {
   const q = v => { v = String(v ?? ''); if (/^[=+\-@]/.test(v)) v = "'" + v; return `"${v.replace(/"/g, '""')}"`; };
@@ -194,13 +223,15 @@ P.refresh = () => {
   try { if (pos != null) el.setSelectionRange(pos, pos); } catch { /* not a text box */ }
 };
 function draw(moveFocus) {
-  const path = location.hash.replace(/^#/, '') || '/admin';
+  const [path, qs] = (location.hash.replace(/^#/, '') || '/admin').split('?');
+  const want = new URLSearchParams(qs || '').get('ed');   // a link like #/site?ed=mirc2027 opens that edition
+  if (want) P.useEdition(want);
   const m = match(path) || { r: path.startsWith('/site') ? P.notFoundSite : P.notFound, params: {} };
   P.cur = m;
   document.body.dataset.area = m.r.area;
   try { $('#app').innerHTML = P.shells[m.r.area](m).s; }
   catch (err) { console.error(err); $('#app').innerHTML = '<main id="main"><h1>Sorry, this page could not be shown</h1><p><a href="#/admin">Go to the dashboard</a></p></main>'; }
-  document.title = `${P.title(m.r, m.params)} - MIRC 2026 prototype`;
+  document.title = `${P.title(m.r, m.params)} - MIRC ${S.conf.year} prototype`;
   if (moveFocus) { $('#main h1')?.focus(); window.scrollTo(0, 0); }
 }
 P.title = (r, params) => typeof r.title === 'function' ? r.title(params) : r.title;
@@ -231,13 +262,19 @@ P.sizeTools = () => html`<div class="textsize" role="group" aria-label="Text siz
   html`<button type="button" class="btn btn-small btn-ghost" data-act="density" data-v="${v}" aria-pressed="${String((document.documentElement.dataset.density || 'comfortable') === v)}">${l}</button>`)}</div>`;
 P.shells.admin = m => {
   const r = m.r, body = r.view(m.params);
-  return html`<header class="topbar on-dark"><a class="brand" href="#/admin">MIRC 2026 <span>Conference Manager</span></a>
-    <div class="topbar-tools">${P.sizeTools()}<a class="btn btn-gold" href="#/site">See the public website</a></div></header>
+  return html`<header class="topbar on-dark"><a class="brand" href="#/admin">MIRC <span>Conference Manager</span></a>
+    <div class="topbar-tools">${P.editionPicker('Edition you are working on', true)}${P.sizeTools()}<a class="btn btn-gold" href="#/site">See the public website</a></div></header>
   <div class="layout"><button type="button" class="btn btn-secondary menu-toggle" data-act="menu" aria-expanded="${String(!!P.ui.menuOpen)}" aria-controls="sidenav">${P.ui.menuOpen ? 'Close menu' : 'Open menu'}</button>
     <nav id="sidenav" class="sidenav${P.ui.menuOpen ? ' open' : ''}" aria-label="Main menu">${navHTML(r)}</nav>
     <main id="main"><div class="main-in">${crumbs(r, m.params)}<h1 tabindex="-1">${P.title(r, m.params)}</h1>
       <div id="fb">${msgHTML()}</div>${body}${P.refBox(r)}</div></main></div>`;
 };
+/* The edition chooser. In the admin area it lists every edition; on the public site it lists only what the viewing role may see. */
+P.editionPicker = (label, all) => {
+  const list = ED.list.filter(e => all || P.canSeeEdition(e) || e.conf.id === ED.cur);
+  return html`<label class="inline edpick">${label} <select data-onchange="edswitch" data-fk="edpick">${list.map(e => html`<option value="${e.conf.id}" ${raw(e.conf.id === ED.cur ? 'selected' : '')}>MIRC ${e.conf.year} (${e.conf.status === 'published' ? 'published' : 'draft'})</option>`)}</select></label> ${P.badge(S.conf.status === 'published' ? 'Published' : 'Draft')}`;
+};
+P.canSeeEdition = e => e.conf.status === 'published' || ['Webmaster', 'Administrator'].includes(u('site.role', 'Guest'));
 P.notFound = { path: '*', area: 'admin', title: 'This page was not found', ref: 'n/a', note: 'Shown for any unknown address, with a way back.', view: () => html`<p class="lead">We could not find that page.</p><p><a class="btn btn-primary" href="#/admin">Go to the dashboard</a></p>` };
 P.notFoundSite = { path: '*', area: 'site', title: 'This page was not found', view: () => html`<p class="lead">We could not find that page.</p><p><a class="btn btn-primary" href="#/site">Go to the home page</a></p>` };
 
@@ -251,6 +288,12 @@ Object.assign(P.act, {
   dlgclose() { dlg().close(); },
   skip() { $('#main h1')?.focus(); },
   menu() { P.ui.menuOpen = !P.ui.menuOpen; P.refresh(); },
+  edswitch(el) {
+    P.useEdition(el.value);
+    const r = P.cur.r, text = `You are now looking at MIRC ${S.conf.year} (${S.conf.status === 'published' ? 'published' : 'draft'}). Everything you see and change belongs to this edition only.`;
+    if (Object.keys(P.cur.params).length && r.parent) P.goSay(r.parent, 'info', text);   // a page about one paper does not exist in the other edition
+    else { P.refresh(); P.say('info', text); }
+  },
   size(el) { document.documentElement.dataset.size = el.dataset.v; try { localStorage.setItem('size', el.dataset.v); } catch { /* storage may be blocked */ } P.refresh(); },
   density(el) { document.documentElement.dataset.density = el.dataset.v; try { localStorage.setItem('density', el.dataset.v); } catch { /* storage may be blocked */ } P.refresh(); },
 });
@@ -264,7 +307,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('submit', e => { if (e.target.dataset.form) { e.preventDefault(); onForm(e.target); } });
 document.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.nav) d.open ? P.navOpen.add(d.dataset.nav) : P.navOpen.delete(d.dataset.nav); }, true);
-window.addEventListener('hashchange', () => { if (P.keep) P.keep = false; else P.msg = null; P.fe = {}; P.sel = {}; P.ui.menuOpen = false; draw(true); });
+window.addEventListener('hashchange', () => { if (P.keep) P.keep = false; else P.msg = null; P.fe = {}; P.sel = {}; P.ui.menuOpen = false; Object.keys(P.ui).filter(k => k.startsWith('cal.f-')).forEach(k => delete P.ui[k]); draw(true); });
 
 P.start = () => {
   try { document.documentElement.dataset.size = localStorage.getItem('size') || '2'; document.documentElement.dataset.density = localStorage.getItem('density') || 'comfortable'; }

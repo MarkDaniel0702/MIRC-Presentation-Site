@@ -1,5 +1,6 @@
-/* MIRC 2026 prototype: constants and SAMPLE data.
-   C = lists taken from the blueprint (sections 4, 5, 9). DATA = invented sample records, not real people.
+/* MIRC prototype: constants and SAMPLE data.
+   C = lists taken from the blueprint (sections 4, 5, 9). MIRC_2026 = invented sample records, not real people.
+   EDITIONS (bottom of file) is the list of conference editions. Each edition holds ALL of its own data, so editions never overwrite each other. Later editions are made with P.newEdition() in editions.js.
    Classic script (no modules) so the prototype opens straight from the file system. */
 
 const C = {
@@ -9,9 +10,12 @@ const C = {
   STATUSES: ['Initial', 'Reviewed', 'Awaiting update', 'Accepted', 'Refused', 'No review'],
   EVENT_TYPES: ['Session', 'Speech/Intervention', 'Logistics', 'Break', 'Tour'],
   ROLES: ['Guest', 'Member', 'Webmaster', 'Reviewer', 'Redactor', 'Administrator', 'Coordinator', 'Participant'],
+  // Accent colors offered for the public site (all from the blueprint palette, used only as borders and fills, never as small text).
+  ACCENTS: [['gold', 'Gold (the current look)', '#e1ca5e'], ['leaf', 'Leaf green', '#297d1f'], ['forest', 'Forest green', '#296334']],
+  // Details that can be asked on the public registration form. First name, last name and email are always asked.
+  REG_OPTIONAL: [['title', 'Title (Dr., Ms. ...)'], ['middle', 'Middle name'], ['language', 'Language'], ['phone', 'Phone number'], ['institution', 'Institution'], ['address', 'Mailing address'], ['country', 'Country of the organization'], ['extra', 'More information']],
   PAGE_TYPES: ['Web link', 'File', 'Customizable page', 'Browse by author', 'Browse by speaker', 'Browse by type of document',
     'Browse by topic', 'Search', 'Gallery', 'Map', 'Sponsors', 'RSS Feed', 'News'],
-  DAYS: ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'],
   LANGS: ['French', 'English', 'Spanish'],
   REG_STATUS: ['Pre-registered', 'Needs payment', 'Registered'],
   // Section 9.3. "exact" = flat fill sampled from the images, "estimate" = gradient / photo overlay.
@@ -33,7 +37,8 @@ const C = {
   ],
 };
 
-const DATA = (() => {
+const MIRC_2026 = (() => {
+  const DAYS = ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'], YEAR = 2026;
   const first = ['Ana', 'Ben', 'Carla', 'Dev', 'Elena', 'Farid', 'Gina', 'Hugo', 'Iris', 'Jon', 'Kira', 'Leo'];
   const last = ['Alvarez', 'Brooks', 'Chen', 'Dumont', 'Egan', 'Faulkner', 'Garcia', 'Hale', 'Ito', 'Jensen', 'Kaur', 'Lopez'];
   const person = i => ({ first: first[i % 12], last: last[(i * 5 + 3) % 12] });
@@ -90,18 +95,18 @@ const DATA = (() => {
   const ev = (id, type, date, start, end, o) => ({ id, type, date, start, end, title: '', topic: '', chair: '', room: '', description: '', breakType: '', file: '', comms: [], ...o });
   const cm = (paperId, start, end) => ({ paperId, start, end, speaker: '' });
   const events = [
-    ev('e1', 'Session', C.DAYS[0], '07:00', '23:55', { topic: T[4], room: 'rm6' }),
-    ev('e2', 'Tour', C.DAYS[1], '07:00', '23:55', { title: 'Free day to visit Manila City' }),
-    ev('e3', 'Logistics', C.DAYS[2], '07:00', '17:00', { title: 'Registration' }),
-    ev('e4', 'Speech/Intervention', C.DAYS[2], '08:00', '08:30', { title: 'Opening Ceremony', chair: 'Conference Chair (sample)', room: 'rm1' }),
-    ev('e5', 'Session', C.DAYS[2], '08:30', '10:00', { topic: T[5], room: 'rm1', chair: 'Session chair (sample)', comms: [cm('700006', '08:30', '09:15'), cm('700015', '09:15', '10:00')] }),
-    ev('e6', 'Break', C.DAYS[2], '10:00', '10:30', { title: 'Coffee break', breakType: 'Coffee break', room: 'rm5' }),
-    ev('e7', 'Session', C.DAYS[2], '10:30', '12:00', { topic: T[0], room: 'rm2', comms: [cm('700001', '10:30', '10:45')] }),
-    ev('e8', 'Session', C.DAYS[2], '10:30', '12:00', { topic: T[1], room: 'rm3', comms: [cm('700002', '10:30', '10:45')] }),
-    ev('e9', 'Break', C.DAYS[2], '12:00', '13:00', { title: 'Lunch', breakType: 'Lunch', room: 'rm5' }),
-    ev('e10', 'Session', C.DAYS[3], '09:00', '10:15', { topic: T[7], room: 'rm4', comms: [cm('700008', '09:00', '09:15')] }),
-    ev('e11', 'Session', C.DAYS[3], '10:15', '11:30', { topic: T[8], room: 'rm4', comms: [cm('700009', '10:15', '10:30')] }),
-    ev('e12', 'Speech/Intervention', C.DAYS[3], '16:00', '16:30', { title: 'Closing remarks', chair: 'Conference Chair (sample)', room: 'rm1' }),
+    ev('e1', 'Session', DAYS[0], '07:00', '23:55', { topic: T[4], room: 'rm6' }),
+    ev('e2', 'Tour', DAYS[1], '07:00', '23:55', { title: 'Free day to visit Manila City' }),
+    ev('e3', 'Logistics', DAYS[2], '07:00', '17:00', { title: 'Registration' }),
+    ev('e4', 'Speech/Intervention', DAYS[2], '08:00', '08:30', { title: 'Opening Ceremony', chair: 'Conference Chair (sample)', room: 'rm1' }),
+    ev('e5', 'Session', DAYS[2], '08:30', '10:00', { topic: T[5], room: 'rm1', chair: 'Session chair (sample)', comms: [cm('700006', '08:30', '09:15'), cm('700015', '09:15', '10:00')] }),
+    ev('e6', 'Break', DAYS[2], '10:00', '10:30', { title: 'Coffee break', breakType: 'Coffee break', room: 'rm5' }),
+    ev('e7', 'Session', DAYS[2], '10:30', '12:00', { topic: T[0], room: 'rm2', comms: [cm('700001', '10:30', '10:45')] }),
+    ev('e8', 'Session', DAYS[2], '10:30', '12:00', { topic: T[1], room: 'rm3', comms: [cm('700002', '10:30', '10:45')] }),
+    ev('e9', 'Break', DAYS[2], '12:00', '13:00', { title: 'Lunch', breakType: 'Lunch', room: 'rm5' }),
+    ev('e10', 'Session', DAYS[3], '09:00', '10:15', { topic: T[7], room: 'rm4', comms: [cm('700008', '09:00', '09:15')] }),
+    ev('e11', 'Session', DAYS[3], '10:15', '11:30', { topic: T[8], room: 'rm4', comms: [cm('700009', '10:15', '10:30')] }),
+    ev('e12', 'Speech/Intervention', DAYS[3], '16:00', '16:30', { title: 'Closing remarks', chair: 'Conference Chair (sample)', room: 'rm1' }),
   ];
 
   const ALL = C.ROLES, W_A = ['Webmaster', 'Administrator'];
@@ -132,7 +137,7 @@ const DATA = (() => {
   pages.forEach(p => { p.body = bodies[p.slug] || ''; });
 
   const tpl = (id, group, name) => {
-    const subject = `[MIRC 2026] ${name}`, body = `Dear participant,\n\n(Sample text for "${name}". The real wording is not part of the blueprint.)\n\nKind regards,\nThe organizing team`;
+    const subject = `[MIRC ${YEAR}] ${name}`, body = `Dear participant,\n\n(Sample text for "${name}". The real wording is not part of the blueprint.)\n\nKind regards,\nThe organizing team`;
     return { id, group, name, subject, body, originalSubject: subject, originalBody: body };
   };
   const templates = [
@@ -143,7 +148,11 @@ const DATA = (() => {
   ].map(([g, n], i) => tpl('t' + (i + 1), g, n));
 
   return {
-    conf: { name: 'Manila International Research Conference 2026', place: 'Manila (Philippines)', dates: '27-30 Sep 2026', tagline: 'Shaping Resilient Futures', sub: 'AI, Sustainability, and Inclusive Innovation' },
+    // conf = what makes this edition different: identity, dates and deadlines, branding. days = every conference day, in order.
+    conf: { id: 'mirc2026', year: YEAR, status: 'published', name: 'Manila International Research Conference 2026', place: 'Manila (Philippines)', venue: 'Pamantasan ng Lungsod ng Maynila (PLM)',
+      tagline: 'Shaping Resilient Futures', sub: 'AI, Sustainability, and Inclusive Innovation', days: DAYS,
+      submission: { open: '2026-05-13', close: '2026-09-20' }, registrationDeadline: '2026-08-20', banner: '', accent: 'gold' },
+    topics: [...C.TOPICS],
     papers, users, registrations, reviewers, rooms, events, pages,
     homeBlocks: [{ id: 'h1', title: 'Conference Overview', body: 'The Manila International Research Conference 2026 (MIRC 2026) is a hybrid international academic conference. It brings together researchers, academicians, practitioners, policymakers and students to present and discuss research on AI, sustainability and innovation.\n\nThe main conference is held on 29-30 September 2026 at the PLM campus. A sub-conference on Hospitality and Tourism is held on 27 September 2026 at the DLSU-CSB campus.' }],
     news: [],
@@ -156,10 +165,13 @@ const DATA = (() => {
     settings: {
       languages: ['English'], defaultLanguage: 'English', contactEmail: 'contact@example.org',
       header: { type: 'Header quick form configuration', title: 'Manila International Research Conference 2026', subtitle: '', logoFile: 'header-logo.png', logoPlace: 'in the header', showDate: 'yes', showPlace: 'yes', html: '<p>Custom header HTML</p>', picture: 'header-logo.png' },
-      showPapers: 'yes', registrationOpen: true,
+      showPapers: 'yes', registrationOpen: true, submissionOpen: false,
+      regFields: Object.fromEntries(C.REG_OPTIONAL.map(([k]) => [k, 'optional'])),
     },
     templates, lists: [], aliases: [{ id: 'a1', name: 'mirc2026', content: '' }], mailLog: [],
     mailLook: { header: '<p style="margin:0;padding:8px;background:#E8F1E6;color:#2F4F4F">MIRC 2026 (sample email header)</p>', font: 'Sans-serif', footer: 'Standard' },
     rightsGroups: { Webmaster: 1, Administrative: 1, Reviewer: reviewers.length, Redactor: 1, Administrator: 2, Coordinator: 1 },
   };
 })();
+
+const EDITIONS = [MIRC_2026];

@@ -1,6 +1,8 @@
-# MIRC 2026 conference website: interactive prototype
+# MIRC conference website: interactive prototype (one site for MIRC 2026, 2027, 2028 ...)
 
 A clickable prototype of the administration area and the public website described in `../MIRC2026_Website_Blueprint.md` (v2). It is built to show the planned structure and the main workflows to the people who will administer the site, most of whom are older adults.
+
+**One site, many years.** Every conference year is an *edition* (blueprint 7.1 `conference.edition_year`, 15.5 yearly rollover). The sample data holds **MIRC 2026 (published)** and **MIRC 2027 (draft, mostly empty)**. An administrator can create 2028 and later from the **Conference** menu without copying the website. See section 10.
 
 > **This is a prototype, not the production application.** All people, papers, numbers and dates are invented **sample data**. Nothing is saved on a server, no email is sent, nobody signs in, and no file is uploaded. Changes live in the browser tab and disappear when you reload.
 
@@ -23,6 +25,9 @@ These are always on screen:
 4. **Pages and menu** → open **Settings** on “List of Participants” → under “Who can read this page” tick “Guest” and save → click **See the public website** → with “Viewing as” set to Guest, the item now appears in the menu. Untick it again and it disappears.
 5. **Send an email** → choose a group, choose a ready-made message (the subject and text fill in) → send → see the record under **Sent emails**.
 6. **Registered people** → **Register someone** → search “kira” → choose → register.
+7. **Schedule** → click days on the **calendar** (the four conference days have a solid border, the other days are hatched; the number is how many events are planned) → try the arrow keys, then click a hatched day to read the plain-language reason. Add an event and pick the time with the two time boxes (hour, minutes).
+8. **Conference › Editions (years)** → **Create a new edition** → year 2028, copy from 2027 → it opens as an empty draft. Then **Edition details** → **Dates and deadlines** → click the conference days → Save → open **Schedule** and see the new calendar.
+9. **Editions (years)** → **Preview** a draft → **Publish** (the confirmation lists what is still missing) → on the public site set “Viewing as” to Guest and use **Conference edition** to see only published editions. **Hide** puts it back to draft.
 
 ## 2. Files
 
@@ -31,10 +36,12 @@ These are always on screen:
 | `index.html` | The page that loads everything. Also holds the always-visible “prototype / sample data” notice |
 | `styles.css` | All styling. The blueprint palette is defined once at the top as CSS variables |
 | `data.js` | The lists from the blueprint (topics, types, statuses, roles, page types, palette) and all **sample data** |
-| `core.js` | Shared parts: page routing, safe HTML templates, forms with validation, confirmation dialogs, tables, messages |
+| `core.js` | Shared parts: page routing, safe HTML templates, forms with validation (including calendar and 24-hour time fields), confirmation dialogs, tables, messages, and the edition switch (`ED`, `S`) |
+| `calendar.js` | The calendar picker (page calendar, form date field, multi-day field), date helpers, and the hour/minute time picker |
+| `editions.js` | Making a new edition from an old one, publish checks, and the pages Editions, Edition details and Registration form |
 | `admin.js` | The administration area (blueprint section 3) |
 | `site.js` | The public website preview (blueprint section 2) |
-| `tests/` | Four automated checks you can re-run (see section 8) |
+| `tests/` | Five automated checks you can re-run (see section 8) |
 
 The scripts are plain classic scripts, not modules, on purpose: browsers block modules when a page is opened straight from a folder.
 
@@ -46,6 +53,8 @@ The prototype groups the blueprint's seven modules by the task an administrator 
 
 | Menu group and page in the prototype | Blueprint module and page |
 |---|---|
+| **Conference** › Editions (years) | Conference record per year (7.1), yearly rollover (15.5) |
+| › Edition details | Conference title, city, dates, submission period (7.1); topics (5, 7.1 `topic`) |
 | **Papers and decisions** › Papers received | Editorial Management › Submissions |
 | › Book of abstracts | Editorial Management › Proceedings |
 | **Reviewers** › Choose reviewers | Reviewing › Reviewers |
@@ -53,6 +62,7 @@ The prototype groups the blueprint's seven modules by the task an administrator 
 | › Papers waiting for review | Reviewing › New submissions |
 | › Papers already reviewed | Reviewing › Submissions reviewed |
 | **Attendees** › Registered people (and Register someone) | Registration management › Participants |
+| › Registration form | Registration form fields (2.5, 7.1) |
 | › Add a user account | Administration › Create account |
 | **Program** › Schedule | Program › Administration |
 | › Rooms | Program › Rooms |
@@ -67,7 +77,7 @@ The prototype groups the blueprint's seven modules by the task an administrator 
 | › Home page text | Website › Homepage |
 | › News | Website › News |
 | › Files and pictures | Website › Uploads |
-| › Site settings (3 tabs) | Website › General, Header, Appearance |
+| › Site settings (4 tabs) | Website › General, Header, Appearance (+ banner and accent) |
 | › Visitor statistics | Website › Statistics |
 | **Help** › Help and prototype guide | Section 4 roles; sections 5, 16 and 17 |
 
@@ -82,7 +92,7 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 3.1 Module overview | `#/admin` Dashboard, left menu, breadcrumbs | Works. Counts come from the sample data |
 | 3.2 Website › General | `#/admin/settings` tab “Languages and contact” | Works (saves to the sample data). Switching the site language is not built |
 | 3.2 Website › Header (3 types) | `#/admin/settings` tab “Header” | Works. Changes the public preview header. The HTML type shows in a safe frame; the picture type shows a placeholder |
-| 3.2 Website › Appearance | `#/admin/settings` tab “Colors” | Interface only. Shows the palette. Preset themes were not described in the blueprint, so none are built |
+| 3.2 Website › Appearance | `#/admin/settings` tabs “Colors” and “Banner and accent” | Colors: shows the palette (interface only). Banner and accent: **works**, per edition: a banner line above the header and one of three palette accent colors. No free color picker, so contrast stays safe |
 | 3.2 Website › Pages (13 page types, folders, rights) | `#/admin/pages` | Works. Rights change the public menu. Only “Customizable page”, “Web link” and “News” have content; the other page types show a placeholder |
 | 3.2 Website › Homepage | `#/admin/homepage` | Works. Shows on the public home page |
 | 3.2 Website › News | `#/admin/news` | Works. Shows on the public home page. The RSS feed is not built |
@@ -90,7 +100,7 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 3.2 Website › Statistics | `#/admin/stats` | Interface only. The button is switched off with the reason (decision D10) |
 | 3.3.1 Program › Appearance | `#/admin/program-display` | Works. Hides or shows papers on the public program |
 | 3.3.2 Program › Rooms | `#/admin/rooms` | Works |
-| 3.3.3 Program › Administration (5 event types, talks, CSV) | `#/admin/schedule` | Works. File attachments keep only the name. Break kinds are a guessed list |
+| 3.3.3 Program › Administration (5 event types, talks, CSV) | `#/admin/schedule` | Works. **Calendar** to choose the day, hour/minute time boxes, checks (end after start, a room cannot be double-booked, a talk fits inside its session and does not overlap another). File attachments keep only the name. Break kinds are a guessed list |
 | 3.4.1 Reviewing › Reviewers | `#/admin/reviewers` | Works (assign by topic or by paper, CSV) |
 | 3.4.1 Reviewing › Papers | `#/admin/review-papers` | Works |
 | 3.4.1 Reviewing › New submissions | `#/admin/review-inbox` | Interface only. Shows the “review period closed” state seen on the live site |
@@ -109,6 +119,9 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 3.6 Register someone | `#/admin/registrations/new` | Works on the sample accounts |
 | 3.7 Administration › Create account | `#/admin/accounts/new` | Works. The password rule (7–20 letters or numbers) is checked. The password is never kept |
 | 4 Roles and permissions, 4.3 matrix | `#/admin/help` (table) and “Viewing as” on the public site | Works. The table is calculated from the rights set under Pages and menu |
+| 7.1 conference (edition_year, title, city, dates, submission window) | `#/admin/editions`, `#/admin/edition` | Works on sample data. Create (copy set-up), switch, preview, publish, hide, delete drafts. Dates by calendar with checks. Draft/published is simulated: it only changes what “Viewing as” sees |
+| 15.5 Yearly edition rollover | Create a new edition | Works: copies pages, rooms, topics, email templates and settings; never papers, people, schedule or news; resets dates. “Archive read-only” is not built |
+| 2.5 Registration form fields | `#/admin/registration-settings` | Works. Choose per detail: do not ask / optional / required. Fees and options are not built (D5) |
 | 3.8 Admin workflows | Covered by the pages above | See the tour in section 1 |
 
 ### Public website preview (`#/site/...`)
@@ -118,10 +131,11 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 2.1 Page layout (bar, header, menu, breadcrumb, footer) | All public pages | Works. “Viewing as” stands in for signing in |
 | 2.2 Home | `#/site` | Works. Text blocks and news come from the admin pages. Partner and sponsor logos are a placeholder (files and permission pending) |
 | 2.2 Conference Programme, Guidelines, Organizing Committee, Invited Speakers, Important Dates, Conference Themes, Venue | `#/site/p/<page>` | Works. Text comes from the Pages module. Names are placeholders. Dates are copied from the live site, including its conflicting dates |
-| 2.3 Detailed program (day tabs, full list, print) | `#/site/program` | Works. Built from Schedule and Rooms. Print opens the browser's print window |
+| 2.3 Detailed program (day tabs, full list, print) | `#/site/program` | Works. Built from Schedule and Rooms. The day buttons come from the edition's conference days (equal-width, “Sun 27 Sep”). Print opens the browser's print window |
 | 2.2 List of Participants (A–Z, count; not for Guests or Members) | `#/site/participants` | Works. Only people with status “Registered” are listed, names only |
-| 2.5 Registration | `#/site/registration` | Works on sample data. Adds a “Pre-registered” person to the admin list. The empty form on the live site was not seen, so the fields are those of its saved recap. Fees and payment are undecided (D5) |
-| 2.2 Abstract Submission | `#/site/submit` | Interface only. Shows the closed message and period. A proposed form layout is under a fold-out and sends nothing |
+| 2.5 Registration | `#/site/registration` | Works on sample data. Adds a “Pre-registered” person to the admin list of that edition. Asks only for the details set under “Registration form”; shows a “not open” note when the edition's registration is closed. The empty form on the live site was not seen, so the fields are those of its saved recap. Fees and payment are undecided (D5) |
+| 2.2 Abstract Submission | `#/site/submit` | Interface only. Open or closed and the period come from the edition. When open the proposed form is shown; it sends nothing |
+| Edition selection | “Conference edition” in the bar, or a link like `#/site?ed=mirc2027` | Works. Visitors (Guest and other non-team roles) get only published editions; a draft opened by link shows “not published yet”. Webmaster and Administrator can preview drafts |
 | 2.6 Account / My Space | `#/site/login`, `#/site/account`, `#/site/my-registration`, `#/site/my-submissions` | Interface only. Real sign-in is not built. The fields of “Edit account” were not seen on the live site |
 | 2.7 User flows | The pages above | Browse, read the program, register, see the participant list, try to submit |
 
@@ -138,6 +152,8 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | Full text editor (bold, links, lists) | Text boxes are plain. A real editor needs sanitizing of the HTML it makes (13.1) |
 | Interface languages (French, Spanish) | The blueprint assumes English to start (A3, D7) |
 | Dark mode | The blueprint recommends light only (9.8) |
+| Real roles for publishing | The prototype has no sign-in: every button on “Editions (years)” works. In production only the Administrator role should publish or hide |
+| Free color pickers, logo upload | Colors stay within the palette; logos come from “Files and pictures”, which only lists names (no storage) |
 | Visitor statistics, RSS feed | Need external services (D10) |
 | Import from Sciencesconf | Phase 7 of the roadmap (D14) |
 
@@ -155,7 +171,9 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 - **Messages stay** on screen until closed; they do not vanish after a few seconds.
 - **Keyboard.** Every control can be reached by Tab. A “Skip to the main content” button comes first. A thick focus ring is always visible (navy on light areas, gold on dark bars). Dialogs close with Esc and return focus to the button that opened them.
 - **Calm layout.** No animation, no auto-moving content, one task per page, long forms in a single column.
+- **Dates are clicked, not typed.** A calendar replaces the day buttons and the browser's date box. Every day is a real button with a full spoken name (“Tuesday 29 September 2026, 7 events planned, selected”). Arrow keys move by day and week, Page Up/Down by month. Chosen days are filled with a tick, days that are not available are hatched with a dashed border, days with events carry a number: no meaning depends on color alone. Times use two boxes (hour, minutes) on the 24-hour clock, so what you type looks like what the schedule shows.
 - **Phones and tablets.** The menu folds behind an “Open menu” button. Tables turn into stacked cards, each value labeled.
+- **Public website menu.** On every screen size the page links sit in a slide-out menu (the **Menu** button, top left) instead of a long bar that wraps over several lines. It closes with the **Close** button, the Esc key, or a click outside it, and the page you are on is marked with a gold edge and bold text. “Sign in” stays in the bar.
 
 ## 6. How the palette is used
 
@@ -206,12 +224,13 @@ These need Python with Playwright: `python -m pip install playwright` then `pyth
 
 | Command | What it checks |
 |---|---|
-| `python tests/crawl.py` | All 37 pages, as Guest and as Participant: no console errors, no dead links, every button has an action, no repeated ids, a way back to the Dashboard |
-| `python tests/workflows.py` | 82 checks of the main workflows end to end |
+| `python tests/crawl.py` | All 40 pages, as Guest and Participant on MIRC 2026 and as Administrator on the empty MIRC 2027 draft: no console errors, no dead links, every button has an action, no repeated ids, a way back to the Dashboard |
+| `python tests/workflows.py` | 84 checks of the main workflows end to end |
 | `python tests/layout-contrast.py` | No sideways scrolling at 1280, 820 and 390 px wide; rendered text contrast on every page; visible focus ring; control sizes. Saves screenshots to a temporary folder and prints where |
-| `python tests/actions-layout.py` | The Actions column of 10 tables at 5 screen widths (1440, 1280, 1024, 820, 390 px), both table spacings and two text sizes (200 page views): the table fits, nothing is clipped or sticks out, all buttons share one height, labels do not wrap, gaps are equal, and rows line up the same way |
+| `python tests/editions.py` | 58 checks: calendar by mouse and keyboard, not-available days, date fields in forms, phone width; editions stay separate, draft/published visibility, create/publish/hide/delete, dates and topics validation, registration-form settings, banner and accent |
+| `python tests/actions-layout.py` | The Actions column of 11 tables at 5 screen widths (1440, 1280, 1024, 820, 390 px), both table spacings and two text sizes (220 page views): the table fits, nothing is clipped or sticks out, all buttons share one height, labels do not wrap, gaps are equal, and rows line up the same way |
 
-**What was actually run (2026-10-09):** all four, from the file system in headless Chromium on Windows. Results at the time of writing: crawl found no problems and no console errors; workflows 82 of 82 passed; layout/contrast found no problems; Actions layout found no problems in 200 page views. The Actions layout was measured before and after the change (for example at 1280 px the Papers buttons went from 81 and 167 px wide, 52 and 74 px tall, with no gap, to equal 85 × 52 px with a 9 px gap).
+**What was actually run (2026-10-09):** all five, from the file system in headless Chromium on Windows. Results: crawl found no problems and no console errors; workflows 84 of 84 passed; layout/contrast found no problems; Actions layout found no problems in 220 page views; editions 58 of 58 passed. The crawl of the empty 2027 draft found one real bug (“My registration” failed when an edition had no registrations); it was fixed. The Actions layout was measured before and after an earlier change (for example at 1280 px the Papers buttons went from 81 and 167 px wide, 52 and 74 px tall, with no gap, to equal 85 × 52 px with a 9 px gap).
 
 **Not tested:** other browsers (Firefox, Safari, Edge), real phones and tablets, any screen reader, and use by actual older adults. These matter for this audience and should be done before the design is signed off.
 
@@ -224,3 +243,36 @@ The plan is in the blueprint: technology in section 12, security in 13, testing 
 3. **Replace the stand-ins**: a real text editor with sanitized output, real partner logos (with permission), real content, real statistics.
 4. **Harden and test**: security review, load test around deadlines, backup restore test, a full accessibility audit with a screen reader and **real older users**, and a trial run of the data import.
 5. **Deploy** using the environments and secrets handling in blueprint section 15.
+
+## 10. Reusable editions: how it is built, and what production needs
+
+**Idea.** The site has no year written into its code. Everything that differs between conferences lives in one *edition record*; the pages, menus and forms are shared.
+
+| Part | Where | What it does |
+|---|---|---|
+| Edition record | `data.js` (`MIRC_2026`, `EDITIONS`) | `conf` (id, year, status draft/published, name, city, venue, theme, conference days, submission window, registration deadline, banner, accent), `topics`, `settings`, `pages`, `rooms`, `events`, `papers`, `registrations`, `news`, `templates`, `files` and more |
+| Edition switch | `core.js` (`ED`, `P.useEdition`) | `S` is a window onto the current edition, so every page asks `S.events`, `S.topics` ... and gets that edition's data. People (`S.users`) are shared by all editions, as in blueprint 7.1 |
+| New edition | `editions.js` (`P.newEdition`) | Copies the set-up (pages, rooms, topics, templates, settings), starts everything else empty, resets dates, sets status Draft. The sample MIRC 2027 is made by this same function |
+| Visibility | `editions.js`, `site.js` | Draft editions are visible only to Webmaster and Administrator (“Viewing as”). Everyone else gets “not published yet”, even from a direct link |
+| Dates | `calendar.js` | One calendar widget; the conference days drive the Schedule calendar, the public program buttons, and the dates on the header and home page |
+
+**Adding the next year:** Conference › Editions (years) › Create a new edition › Edition details (name, theme, place, dates, topics) › Schedule, Pages and menu, Registration form, Site settings › Preview › Publish. No code change.
+
+**Changes since the first prototype (summary).**
+- Done: calendar and clearer date selection (Schedule, date fields, conference days); aligned Start/End time boxes; schedule table with a Room column and times that no longer wrap; plain-language checks for time, room clashes, talks inside their session, deadlines and removed days; multi-edition data model with draft/published; Editions, Edition details and Registration form pages; banner and accent per edition; public edition choice; dashboard card with “still to do before publishing”.
+- Kept as before: all earlier pages, palette, menus, text-size and table-spacing buttons, and the existing test checks (two were changed because the time boxes and the day buttons changed; two checks were added).
+
+**Frontend only (simulated) and what production needs.**
+
+| Shown in the prototype | Production needs |
+|---|---|
+| Editions, drafts and publishing live in the browser tab and vanish on reload | A database with a conference id on every table (blueprint 7.1) and row-level access rules; a published/draft flag checked on the server for every public request |
+| “Viewing as” stands in for roles | Real sign-in; only the Administrator role may publish or hide an edition; audit log of who published what and when |
+| Create edition copies in memory | A server job for the yearly rollover (15.5), run in one database transaction, with a way to archive an old edition read-only |
+| Logos and files are names only | File storage and virus scanning; image size limits |
+| Banner and accent are three fixed choices | A reviewed theme list (D6); a full theme editor would need contrast checks built in |
+| Registration and abstract forms send nothing | Form handling, email service, spam protection, privacy notice (blueprint 13) |
+| Fees, payment options, review rules | Still undecided (D5, D12) and not built |
+| One topic list per edition, edited as text | A topics table with ids, so renaming a topic updates papers and sessions |
+
+**Not tested:** other browsers, real phones and tablets, a screen reader (the calendar uses button, grid and live-region roles but was only checked by script), and use by actual older adults.

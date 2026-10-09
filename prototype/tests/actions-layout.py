@@ -12,7 +12,7 @@ base = (pathlib.Path(__file__).resolve().parent.parent / "index.html").as_uri()
 
 # Pages with tables that have an Actions column. Some need a little setup so the table has rows.
 PAGES = ["/admin/papers", "/admin/reviewers", "/admin/review-papers", "/admin/registrations", "/admin/schedule", "/admin/rooms",
-         "/admin/mail/templates", "/admin/pages", "/admin/homepage", "/admin/files"]
+         "/admin/mail/templates", "/admin/pages", "/admin/homepage", "/admin/files", "/admin/editions"]
 SETUP = {"/admin/schedule": "P.ui['sched.day']='2026-09-29'"}
 
 CHECK = r"""
