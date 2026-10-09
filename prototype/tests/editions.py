@@ -240,17 +240,16 @@ with sync_playwright() as p:
     pg.evaluate("P.ui['site.role']='Webmaster'; P.refresh()")
     check("registration form: settings belong to one edition (2027 is closed and unchanged)", "is not open" in pg.inner_text("main") and pg.evaluate("P.edition('mirc2027').settings.regFields.phone") == "optional")
 
-    # ---------- banner and accent ----------
+    # ---------- banner ----------
     pg.evaluate("P.useEdition('mirc2026')")
     go("/admin/settings")
-    pg.get_by_role("button", name="Banner and accent").click()
+    pg.get_by_role("button", name="Banner", exact=True).click()
     pg.locator("#f-banner").fill("Registration closes soon")
-    pg.locator("#f-accent").select_option("leaf")
     pg.get_by_role("button", name="Save").click()
     pg.evaluate("P.ui['site.role']='Guest'")
     pg.goto(base + "#/site")
     pg.wait_for_selector("main h1")
-    check("branding: banner and accent show on the public site", "Registration closes soon" in pg.inner_text(".site-banner") and "#297d1f" in pg.get_attribute(".site", "style").lower(), pg.get_attribute(".site", "style"))
+    check("branding: the banner shows on the public site", "Registration closes soon" in pg.inner_text(".site-banner"))
     check("branding: another edition has no banner", pg.evaluate("P.edition('mirc2027').conf.banner") == "")
 
     # ---------- shared people, separate registrations ----------

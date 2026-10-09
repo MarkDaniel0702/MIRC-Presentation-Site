@@ -27,7 +27,10 @@ These are always on screen:
 6. **Registered people** → **Register someone** → search “kira” → choose → register.
 7. **Schedule** → click days on the **calendar** (the four conference days have a solid border, the other days are hatched; the number is how many events are planned) → try the arrow keys, then click a hatched day to read the plain-language reason. Add an event and pick the time with the two time boxes (hour, minutes).
 8. **Conference › Editions (years)** → **Create a new edition** → year 2028, copy from 2027 → it opens as an empty draft. Then **Edition details** → **Dates and deadlines** → click the conference days → Save → open **Schedule** and see the new calendar.
-9. **Editions (years)** → **Preview** a draft → **Publish** (the confirmation lists what is still missing) → on the public site set “Viewing as” to Guest and use **Conference edition** to see only published editions. **Hide** puts it back to draft.
+9. **Conference › Logo** → choose a picture file (try a text file renamed “.png” to see the refusal) → check the preview in the header, phone header and menu bar → zoom and move it → **Save**. On a published edition choose **Save as a draft** first: visitors keep the old logo, and “Preview on the website” (Webmaster) shows the new one.
+10. **Website › Site colors** → change the primary color with the square or by typing a HEX code → watch the preview and the readability list → try a pale text color to see the warnings → **Save** (or **Save as a draft** on a published edition, then “Preview on the website”) → **Reset all colors to the default** and **Earlier palettes** bring the old colors back.
+11. On the public site, set “Viewing as” to Participant and open **My Account** in the bar: it holds My submissions, My registration, Edit account and Log out.
+12. **Editions (years)** → **Preview** a draft → **Publish** (the confirmation lists what is still missing) → on the public site set “Viewing as” to Guest and use **Conference edition** to see only published editions. **Hide** puts it back to draft.
 
 ## 2. Files
 
@@ -39,6 +42,8 @@ These are always on screen:
 | `core.js` | Shared parts: page routing, safe HTML templates, forms with validation (including calendar and 24-hour time fields), confirmation dialogs, tables, messages, and the edition switch (`ED`, `S`) |
 | `calendar.js` | The calendar picker (page calendar, form date field, multi-day field), date helpers, and the hour/minute time picker |
 | `editions.js` | Making a new edition from an old one, publish checks, and the pages Editions, Edition details and Registration form |
+| `theme.js` | Visitor-site colors: the 8-color palette, the colors worked out from it, the WCAG checks, the editor with live preview, draft/publish and earlier palettes |
+| `logo.js` | Logo management: the upload specification, the file checks, the preview/crop/zoom, draft and publish steps, and the one square frame every logo is shown in |
 | `admin.js` | The administration area (blueprint section 3) |
 | `site.js` | The public website preview (blueprint section 2) |
 | `tests/` | Five automated checks you can re-run (see section 8) |
@@ -55,6 +60,7 @@ The prototype groups the blueprint's seven modules by the task an administrator 
 |---|---|
 | **Conference** › Editions (years) | Conference record per year (7.1), yearly rollover (15.5) |
 | › Edition details | Conference title, city, dates, submission period (7.1); topics (5, 7.1 `topic`) |
+| › Logo | Website › Header (`LOGO_SRC`, `LOGO_PLACE`), Uploads folder `header`; 7.1 `conference.logo_url` |
 | **Papers and decisions** › Papers received | Editorial Management › Submissions |
 | › Book of abstracts | Editorial Management › Proceedings |
 | **Reviewers** › Choose reviewers | Reviewing › Reviewers |
@@ -77,7 +83,8 @@ The prototype groups the blueprint's seven modules by the task an administrator 
 | › Home page text | Website › Homepage |
 | › News | Website › News |
 | › Files and pictures | Website › Uploads |
-| › Site settings (4 tabs) | Website › General, Header, Appearance (+ banner and accent) |
+| › Site colors | Website › Appearance (the live site has preset themes; free colors are the rebuild's own addition, 9.10) |
+| › Site settings (4 tabs) | Website › General, Header, Appearance (original palette, read-only), banner |
 | › Visitor statistics | Website › Statistics |
 | **Help** › Help and prototype guide | Section 4 roles; sections 5, 16 and 17 |
 
@@ -91,12 +98,12 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 |---|---|---|
 | 3.1 Module overview | `#/admin` Dashboard, left menu, breadcrumbs | Works. Counts come from the sample data |
 | 3.2 Website › General | `#/admin/settings` tab “Languages and contact” | Works (saves to the sample data). Switching the site language is not built |
-| 3.2 Website › Header (3 types) | `#/admin/settings` tab “Header” | Works. Changes the public preview header. The HTML type shows in a safe frame; the picture type shows a placeholder |
-| 3.2 Website › Appearance | `#/admin/settings` tabs “Colors” and “Banner and accent” | Colors: shows the palette (interface only). Banner and accent: **works**, per edition: a banner line above the header and one of three palette accent colors. No free color picker, so contrast stays safe |
+| 3.2 Website › Header (3 types) | `#/admin/settings` tab “Header”, and `#/admin/logo` | Header title, subtitle, date and place work as before. **The logo moved to its own page** (Conference › Logo): upload, checks, preview, crop, save/publish, place (header, menu bar, nowhere). The HTML type shows in a safe frame; the picture type shows a placeholder |
+| 3.2 Website › Appearance | `#/admin/colors` (editor) and `#/admin/settings` tabs “Colors” and “Banner” | **Site colors works**, per edition: 8 colors with pickers and HEX boxes, live preview, readability checks, save / draft / publish / cancel / reset / earlier palettes (section 12). The “Colors” tab keeps the original palette as a read-only reference. Banner: a line above the header. |
 | 3.2 Website › Pages (13 page types, folders, rights) | `#/admin/pages` | Works. Rights change the public menu. Only “Customizable page”, “Web link” and “News” have content; the other page types show a placeholder |
 | 3.2 Website › Homepage | `#/admin/homepage` | Works. Shows on the public home page |
 | 3.2 Website › News | `#/admin/news` | Works. Shows on the public home page. The RSS feed is not built |
-| 3.2 Website › Uploads | `#/admin/files` | Simulated. Checks the 200 MB limit and lists name and size. Nothing is uploaded |
+| 3.2 Website › Uploads | `#/admin/files` | Simulated. A saved logo is also listed here (folder “header”). Checks the 200 MB limit and lists name and size. Nothing is uploaded |
 | 3.2 Website › Statistics | `#/admin/stats` | Interface only. The button is switched off with the reason (decision D10) |
 | 3.3.1 Program › Appearance | `#/admin/program-display` | Works. Hides or shows papers on the public program |
 | 3.3.2 Program › Rooms | `#/admin/rooms` | Works |
@@ -136,7 +143,7 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 2.5 Registration | `#/site/registration` | Works on sample data. Adds a “Pre-registered” person to the admin list of that edition. Asks only for the details set under “Registration form”; shows a “not open” note when the edition's registration is closed. The empty form on the live site was not seen, so the fields are those of its saved recap. Fees and payment are undecided (D5) |
 | 2.2 Abstract Submission | `#/site/submit` | Interface only. Open or closed and the period come from the edition. When open the proposed form is shown; it sends nothing |
 | Edition selection | “Conference edition” in the bar, or a link like `#/site?ed=mirc2027` | Works. Visitors (Guest and other non-team roles) get only published editions; a draft opened by link shows “not published yet”. Webmaster and Administrator can preview drafts |
-| 2.6 Account / My Space | `#/site/login`, `#/site/account`, `#/site/my-registration`, `#/site/my-submissions` | Interface only. Real sign-in is not built. The fields of “Edit account” were not seen on the live site |
+| 2.6 Account / My Space | `#/site/login`, `#/site/account`, `#/site/my-registration`, `#/site/my-submissions` | Interface only. Real sign-in is not built. The fields of “Edit account” were not seen on the live site. The signed-in button is now called **My Account** (section 12) |
 | 2.7 User flows | The pages above | Browse, read the program, register, see the participant list, try to submit |
 
 ### Not built, on purpose
@@ -152,8 +159,9 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | Full text editor (bold, links, lists) | Text boxes are plain. A real editor needs sanitizing of the HTML it makes (13.1) |
 | Interface languages (French, Spanish) | The blueprint assumes English to start (A3, D7) |
 | Dark mode | The blueprint recommends light only (9.8) |
+| Storing the logo file | The prototype reads the file in the browser and shows it from a temporary address. Nothing is uploaded; the logo disappears on reload (section 11) |
 | Real roles for publishing | The prototype has no sign-in: every button on “Editions (years)” works. In production only the Administrator role should publish or hide |
-| Free color pickers, logo upload | Colors stay within the palette; logos come from “Files and pictures”, which only lists names (no storage) |
+| Persistent palettes and logos | Colors and logos live in the browser tab only (sections 11 and 12) |
 | Visitor statistics, RSS feed | Need external services (D10) |
 | Import from Sciencesconf | Phase 7 of the roadmap (D14) |
 
@@ -165,6 +173,7 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 - **Big targets.** Buttons are at least 2.6 rem (about 52 px) tall; table tick boxes are about 44 px. The automated size check was run on the Papers received page only, where it found no control smaller than 44 px. “Compact” tables use smaller buttons (about 2.2 rem, 44 px at “Large”) and 17 px text.
 - **A tidy Actions column.** Every table's Actions column uses one shared layout: all buttons have the same height; they have the same width inside a cell (the widest label sets it); the gap between buttons is the same everywhere; labels never wrap; and the buttons start at the same left edge in every row. Up to three buttons stack in one column; four or more use two even columns. In “Compact” the buttons sit side by side. Long labels were shortened where the page already gives context (for example “Edit title and abstract” is now “Edit” on screen, and keeps its full name for screen readers).
 - **Tables fit the space they are given.** A table switches to stacked cards when its own content area is narrower than 40 rem, which also reacts to the text-size buttons. If a table is ever still too wide it scrolls sideways inside its own box, which can be reached with the keyboard, and the page itself never scrolls sideways. The Registrations and Pages tables were reorganized (date and amount now sit under the person and the status; the page kind sits under the page title) so they fit without losing any information.
+- **Custom colors cannot silently break readability.** Every combination that carries text or marks a control is measured (4.5 to 1 for text, 3 to 1 for outlines and the focus ring) and any that fails is shown with a word and a symbol, with advice; saving a failing palette needs a second confirmation whose safe answer is “No, go back”. Text on buttons and bars, hover and pressed colors and the focus ring are worked out automatically, so they cannot be set wrong.
 - **Words, not just colors or icons.** Every status has a word and a symbol (“✔ Accepted”, “✖ Refused”). Messages start with “Done.”, “Note.” or “Problem.”.
 - **Confirmation before anything is removed or changed in bulk**, with the safe answer (“No, go back”) pre-selected.
 - **Clear errors.** A summary at the top of the form lists each problem as a link that jumps to the field, and each field repeats its problem in plain words.
@@ -228,9 +237,11 @@ These need Python with Playwright: `python -m pip install playwright` then `pyth
 | `python tests/workflows.py` | 84 checks of the main workflows end to end |
 | `python tests/layout-contrast.py` | No sideways scrolling at 1280, 820 and 390 px wide; rendered text contrast on every page; visible focus ring; control sizes. Saves screenshots to a temporary folder and prints where |
 | `python tests/editions.py` | 58 checks: calendar by mouse and keyboard, not-available days, date fields in forms, phone width; editions stay separate, draft/published visibility, create/publish/hide/delete, dates and topics validation, registration-form settings, banner and accent |
+| `python tests/logo.py` | 61 checks: the specification is shown before choosing a file; every refusal message (text renamed .png, a JPEG named .png, GIF, SVG with a script or event handler, SVG without size, over 2 MB, empty, too small, too extreme a shape, damaged file); preview, fit, zoom, position; cancel; alt text; save, draft and publish; one logo per edition; header, menu bar and home page; layout at 1280, 820 and 390 px at two text sizes with a very long title |
+| `python tests/theme.py` | 65 checks: pickers and HEX boxes, live preview, bad codes, 3-digit codes, readability warnings and the confirmation before saving a hard-to-read palette, cancel, reset, one palette per edition (draft edition, published edition, new edition), draft and publish, earlier palettes, restore the original; the palette on real public pages (header, bar, buttons, cards, forms, footer, menu drawer) at 1280, 820 and 390 px; hover and focus colors; the administration area unchanged; the My Account menu at three widths and two text sizes |
 | `python tests/actions-layout.py` | The Actions column of 11 tables at 5 screen widths (1440, 1280, 1024, 820, 390 px), both table spacings and two text sizes (220 page views): the table fits, nothing is clipped or sticks out, all buttons share one height, labels do not wrap, gaps are equal, and rows line up the same way |
 
-**What was actually run (2026-10-09):** all five, from the file system in headless Chromium on Windows. Results: crawl found no problems and no console errors; workflows 84 of 84 passed; layout/contrast found no problems; Actions layout found no problems in 220 page views; editions 58 of 58 passed. The crawl of the empty 2027 draft found one real bug (“My registration” failed when an edition had no registrations); it was fixed. The Actions layout was measured before and after an earlier change (for example at 1280 px the Papers buttons went from 81 and 167 px wide, 52 and 74 px tall, with no gap, to equal 85 × 52 px with a 9 px gap).
+**What was actually run (2026-10-09):** all five, from the file system in headless Chromium on Windows. Results (the crawl now visits 42 pages; logo checks 61 of 61; theme checks 65 of 65): crawl found no problems and no console errors; workflows 84 of 84 passed; layout/contrast found no problems; Actions layout found no problems in 220 page views; editions 58 of 58 passed. The crawl of the empty 2027 draft found one real bug (“My registration” failed when an edition had no registrations); it was fixed. The Actions layout was measured before and after an earlier change (for example at 1280 px the Papers buttons went from 81 and 167 px wide, 52 and 74 px tall, with no gap, to equal 85 × 52 px with a 9 px gap).
 
 **Not tested:** other browsers (Firefox, Safari, Edge), real phones and tablets, any screen reader, and use by actual older adults. These matter for this audience and should be done before the design is signed off.
 
@@ -276,3 +287,83 @@ The plan is in the blueprint: technology in section 12, security in 13, testing 
 | One topic list per edition, edited as text | A topics table with ids, so renaming a topic updates papers and sessions |
 
 **Not tested:** other browsers, real phones and tablets, a screen reader (the calendar uses button, grid and live-region roles but was only checked by script), and use by actual older adults.
+
+## 11. Logo management: specification, behavior, and what production needs
+
+**Where.** Conference › **Logo** (`#/admin/logo`). The dashboard card and the Editions list show each edition's logo. Where the logo appears is chosen on the same page.
+
+**How the sizes were chosen (not arbitrary).** The header logo frame was already 6 rem square: 120 px at the default text size, 144 px at “Largest”; the home page uses 7 rem (168 px); the menu bar 2.75 rem. A picture is sharp on high-resolution screens at twice its display size, so the **minimum is 240 px** (2 × 120) on the longest side. **600 × 600 px** is recommended: it stays sharp at 2× even at “Largest” on the home page (336 px) and leaves room to zoom in. The old placeholder was a circle; the frame is now a rounded square with a white background, because a square holds square, round and wide logos alike and shows a transparent logo on a plain ground.
+
+| Requirement | Value | Where enforced |
+|---|---|---|
+| Formats | PNG or SVG recommended; JPEG and WebP accepted; GIF refused | By the file's first bytes, not its name |
+| Name must match contents | “.png” must really be a PNG, and so on | Refused with the real format named |
+| File size | at most 2 MB | Refused, says the size found |
+| Pixels (PNG, JPEG, WebP) | longest side 240 to 4000; short side at least 48 | Refused, says the size found and the recommendation |
+| Shape | square recommended; up to 4:1 or 1:4 accepted | Beyond that refused; a non-square picture is **shown whole, never stretched**, with a warning that explains it |
+| SVG | must have a size or viewBox; no scripts, event handlers, embedded pages or links to other sites | Refused with a plain explanation. SVG is only ever shown through an image tag, so it cannot run code |
+| Text alternative | required, up to 120 characters | Plain-language message |
+
+**Fit, crop and position.** “Whole logo” (default) never cuts anything. “Fill the frame” crops the edges. Zoom (100–300 %) and two position sliders choose which part shows. These are saved as settings beside the original file (nothing is destroyed), and every place that shows the logo uses the same frame and settings. A warning appears if the zoom enlarges a picture past its real size.
+
+**Preview, cancel, save, publish.** After choosing a file nothing is saved. The page shows the logo in the real header, a phone-width header and the menu bar, using the edition's real title and place. **Cancel**, or leaving the page, drops the choice and the current logo stays. In a **draft** edition one button saves. In a **published** edition there are two: **Publish this logo now**, or **Save as a draft**, which keeps the old logo for visitors, lets the team (Webmaster, Administrator) see the new one with a “Logo preview” notice, and can then be published or discarded.
+
+**Separation between editions.** The logo, its draft and its file entry live inside the edition record. A new edition starts **without a logo** and without the previous year's logo file. Tests confirm that saving, publishing, removing or discarding a logo for one edition leaves the others unchanged.
+
+**Frontend only, and what production needs.**
+
+| In the prototype | In production |
+|---|---|
+| The chosen file is read in the browser and shown from a temporary (blob) address; lost on reload | File storage with a path that includes the conference id, for example `editions/<conference_id>/logo/<new id>.<ext>`; every upload gets a new name, so a logo can never overwrite another edition's file; keep old versions for rollback |
+| File checks run in the visitor's browser and can be bypassed | **Repeat every check on the server**: sniff the real type, enforce size and pixel limits, and decode the picture. Prefer re-encoding rasters (this strips hidden data) and sanitizing SVG with a maintained library, or convert logos to PNG. Add virus scanning |
+| Crop is saved as settings only | Either keep applying the same settings in the page (as here), or generate a cropped copy on the server |
+| A logo is a field on the edition record | Columns or a table such as `conference_logo(conference_id, file_id, alt, fit, zoom, x, y, status draft/published)`; blueprint 7.1 has `conference.logo_url` only |
+| Anyone can use the page | Only Administrator and Webmaster may change a logo; only Administrator may publish (same rule as publishing an edition); log who changed what and when |
+| Draft logo is visible to “Webmaster” and “Administrator” in the preview | Serve the draft file only to signed-in team members, never from a public address |
+| Served from the page | Serve through a CDN with long cache lifetimes and unique file names; send `Content-Type` from the server's own detection and `X-Content-Type-Options: nosniff`; set width and height to avoid layout shift |
+
+**Not tested:** other browsers, real phones, screen readers, very large real-world files from real design programs, and use by real administrators. The checks were run on pictures drawn by the test script (PNG, JPEG, WebP, SVG) and on hand-made bad files.
+
+## 12. Visitor-site colors and the “My Account” button
+
+### 12.1 What was found, and the label chosen
+**Before:** the signed-in button said “My Space (Participant)” (role in brackets). It is not a link to one page: it opens a small menu of the person's own pages, **My submissions, My registration, Edit account, Log out**, plus **Administration area** for the team roles (Webmaster, Administrator, Coordinator, Reviewer). That matches blueprint 2.1 and 2.6: on the live Sciencesconf site “My Space” is the organizer's back office, and its dropdown holds those same four items. Visitors who are not signed in see **Sign in** instead.
+
+**Options weighed against that function:** “Participant Portal” and “Participant Dashboard” are wrong (reviewers and organizers use the same button; nothing here is a dashboard). “My Conference” misses Edit account and Log out. **“My Account”** covers all of it: the person's registration, their submissions, their details, and signing out.
+
+**Final label: My Account.** The button keeps its place, size, style and ▾ marker. Its tooltip reads “Your registration, your submissions and your account details”. The role moved out of the label into the first line of the menu (“Signed in as Participant”), because the role is not part of the destination. All four destinations, the Administration link and Log out are unchanged. The old name appears nowhere on the public pages (tested). The blueprint keeps “My Space” only where it describes the live site.
+
+### 12.2 Where the colors are, and how they reach the pages
+Website › **Site colors** (`#/admin/colors`). Each edition has its own palette (`settings.theme`, a draft in `themePending`, and the last five replaced palettes in `themeHistory`), so changing one edition never changes another. A new edition starts with a **copy** of the palette of the edition it came from.
+
+| Color | Used for |
+|---|---|
+| Primary | Headings, links, tabs, outline of secondary buttons |
+| Secondary | Navigation bar, menu panel, footer |
+| Accent | Line under the header and on the home card, accent button, highlights |
+| Page background | Behind every page |
+| Surface | Cards, header, forms, tables, fill of secondary buttons |
+| Text | Body text and form field outlines |
+| Main button | Fill of main buttons |
+| Border and soft fill | Card outlines, table heading background |
+
+Worked out automatically from these: text on buttons and bars (white or navy, whichever reads better), hover and pressed colors, link hover, the keyboard focus ring (navy or white, whichever stands out from both page and cards), and the gradient of the large home title.
+
+**How it is applied (one configuration, no colors in components).** `theme.js` writes the palette and the worked-out colors as `--t-*` variables on the `.site` wrapper of the public pages. In `styles.css` one block (“Visitor-site theme”) re-points the existing palette variables to them inside `.site`, plus a few rules for buttons, bars and states. Every component (header, menu bar, menu panel, user menu, buttons, links, cards, forms, tables, alerts, badges, announcements banner, footer) therefore follows the palette. The administration area and the prototype's own “Public website preview” bar are outside `.site`, so they keep the original colors (tested). The live preview is the same components inside the same wrapper.
+
+**Accessibility.** Twelve combinations are measured with the WCAG 2.1 formula: body text on page and on cards, headings and links on page and cards, text on main buttons (normal and hover), button shape against cards and page (3 to 1), text on the bar and footer, text on the accent button, table headings, secondary-button hover, and the focus ring. A failing row shows “! Too low” with advice. Saving a failing palette needs a second confirmation, whose safe answer is “No, go back and change them”. Status messages keep their word and symbol, so no meaning depends on color; the status colors themselves (green, gold, navy) are fixed and not part of the palette. Focus rings stay 4 px, and hover and pressed colors are always different from the resting color.
+
+**Controls.** Picker and HEX box stay in step; a bad code is refused with a plain message and does not change the preview; three-digit codes expand; **Default** next to each color; **Cancel** returns to the saved colors; **Reset all colors to the default** loads the original palette into the editor (not yet saved); **Restore the original palette on the website now** applies it at once, with confirmation; **Earlier palettes** load a previous palette into the editor. On a published edition you choose **Publish now** or **Save as a draft**: visitors keep the old colors, the team (Webmaster, Administrator) sees the draft marked “Branding preview”, and it can then be published or discarded.
+
+### 12.3 Frontend only, and what production needs
+| In the prototype | In production |
+|---|---|
+| Palettes are held in the edition record in the browser tab and vanish on reload. Nothing is stored on a server | A table such as `conference_theme(conference_id, status draft/published, primary, secondary, accent, background, surface, text, button, border, updated_by, updated_at)` plus a history table; per-edition rows so editions stay separate |
+| The editor trusts the browser to validate HEX codes | Validate on the server (`^#[0-9a-f]{6}$`) and never write a stored value into CSS unchecked. The prototype also re-validates every color before use and falls back to the default |
+| Colors are written as an inline style on the page wrapper | Serve the published palette as a small CSS file or a `<style>` block per edition, cached and invalidated on publish; draft palettes only to signed-in team members |
+| Contrast is measured in the browser | Run the same measurement on the server before publishing, and keep the confirmation step; log who confirmed a failing palette |
+| Anyone can open the page; no roles | Only Administrator and Webmaster may edit; only Administrator may publish (same rule as editions and logos) |
+| The 12 checks cover the components that exist today | Add a row whenever a new component or color pairing is added. Keep the checks in a test that fails the build when the default palette stops passing |
+| No dark-theme work | A dark palette can be entered and is checked, but blueprint 9.8 recommends light only; dark mode would need its own review of images and the logo frame |
+
+**Not tested:** other browsers, real phones and tablets, a screen reader (the preview is hidden from screen readers and replaced by the readability list), color-blind users, and real administrators. Contrast is calculated, not judged by eye.

@@ -43,10 +43,11 @@ P.add({
     return html`
     <p class="lead">Choose a card below, or use the menu on the left. Every page has a “Dashboard” link at the top, so you can always come back here.</p>
     <section class="card" aria-labelledby="ed-h"><h2 id="ed-h">Conference edition: MIRC ${S.conf.year} ${P.badge(draft ? 'Draft' : 'Published')}</h2>
+      <div class="logo-row">${P.logoHTML(S.settings.logo, 'md', true)}<div>${S.settings.logo ? '' : html`<p><strong>No logo yet.</strong> Upload one under Conference, “Logo”.</p>`}
       <p><strong>${P.datesText(S.conf.days)}</strong> · ${S.conf.place}${S.conf.venue ? ' · ' + S.conf.venue : ''}</p>
       <p>${draft ? 'Only the team can see this edition. Visitors cannot see it until you publish it.' : 'Visitors can see this edition. What you save is visible at once.'} Everything in this menu belongs to this edition only.</p>
       ${draft && todo.length ? html`<p><strong>Still to do before publishing:</strong></p><ul>${todo.map(x => html`<li>${x}</li>`)}</ul>` : ''}
-      <div class="actions"><a class="btn btn-primary" href="#/admin/edition">Edit the details</a><a class="btn btn-secondary" href="#/admin/editions">All editions (years)</a></div></section>
+      <div class="actions"><a class="btn btn-primary" href="#/admin/edition">Edit the details</a><a class="btn btn-secondary" href="#/admin/logo">Logo</a><a class="btn btn-secondary" href="#/admin/colors">Colors</a><a class="btn btn-secondary" href="#/admin/editions">All editions (years)</a></div></div></div></section>
     <section class="card" aria-labelledby="attn"><h2 id="attn">Needs your attention</h2><ul class="attn">
       <li><span><strong>${initial}</strong> new paper${initial === 1 ? '' : 's'} (status “Initial”) waiting for a decision.</span> ${setBtn('/admin/papers', { 'papers.status': 'Initial' }, 'Show them')}</li>
       <li><span><strong>${noRev}</strong> paper${noRev === 1 ? ' has' : 's have'} no reviewer yet.</span> ${setBtn('/admin/review-papers', { 'rp.view': 'none' }, 'Show them')}</li>
@@ -762,17 +763,15 @@ P.defForm('set-general', {
   run: v => { Object.assign(S.settings, v); P.say('ok', 'The general settings were saved. (Switching languages is not built in this prototype; the blueprint assumes English only to start.)'); P.refresh(); },
 });
 P.defForm('set-look', {
-  fields: () => [{ name: 'banner', label: 'Banner message (optional)', hint: 'A short line shown in a bar above the header of the public site, for example “Registration closes on 31 August”. Leave empty for no banner.' },
-    { name: 'accent', label: 'Accent color of this edition', type: 'select', options: C.ACCENTS.map(([v, l]) => ({ v, l })), hint: 'Used for the line under the header. Only colors of the blueprint palette are offered, so text stays readable.' }],
-  run: v => { Object.assign(S.conf, v); P.say('ok', 'The banner and accent color were saved for this edition. Open the public website to see them.'); P.refresh(); },
+  fields: () => [{ name: 'banner', label: 'Banner message (optional)', hint: 'A short line shown in a bar above the header of the public site, for example “Registration closes on 31 August”. Leave empty for no banner. Its colors come from the site palette.' }],
+  run: v => { Object.assign(S.conf, v); P.say('ok', 'The banner was saved for this edition. Open the public website to see it.'); P.refresh(); },
 });
 const HTYPES = ['Header quick form configuration', 'Customize your header in HTML', 'Header picture'];
 P.defForm('set-header', {
   fields: () => {
     const t = u('hdr.type', S.settings.header.type);
     return [{ name: 'type', label: 'How do you want to make the header?', type: 'select', options: HTYPES, attrs: 'data-onchange="hdrtype"' },
-      ...(t === HTYPES[0] ? [{ name: 'title', label: 'Title', required: true }, { name: 'subtitle', label: 'Subtitle' }, { name: 'logoFile', label: 'Logo', type: 'select', options: [{ v: '', l: '(none)' }, ...fileOpts('header')] },
-        { name: 'logoPlace', label: 'Where does the logo go?', type: 'select', options: ['in the header', 'in the menu', 'no'] }, { name: 'showDate', label: 'Show the dates?', type: 'select', options: ['yes', 'no'] }, { name: 'showPlace', label: 'Show the place?', type: 'select', options: ['yes', 'no'] }]
+      ...(t === HTYPES[0] ? [{ name: 'title', label: 'Title', required: true }, { name: 'subtitle', label: 'Subtitle' }, { name: 'showDate', label: 'Show the dates?', type: 'select', options: ['yes', 'no'] }, { name: 'showPlace', label: 'Show the place?', type: 'select', options: ['yes', 'no'] }]
         : t === HTYPES[1] ? [{ name: 'html', label: 'Header (HTML)', type: 'textarea', rows: 6, required: true, hint: 'Shown in a safe frame on the public preview.' }]
           : [{ name: 'picture', label: 'Header picture', type: 'select', required: true, options: [{ v: '', l: '-- Choose a picture --' }, ...fileOpts('header')], hint: 'Pictures come from “Files and pictures”, group “header”.' }])];
   },
@@ -780,16 +779,16 @@ P.defForm('set-header', {
 });
 P.act.hdrtype = el => { P.fe['set-header'] = { vals: { ...P.readFields(el.form, P.formDefs['set-header'].fields()), type: el.value }, errs: {} }; P.ui['hdr.type'] = el.value; P.refresh(); };
 P.add({
-  path: '/admin/settings', area: 'admin', group: 'Website', nav: true, label: 'Site settings', title: 'Site settings: languages, header, banner and colors', blurb: 'Languages, contact email, header, banner and colors.',
+  path: '/admin/settings', area: 'admin', group: 'Website', nav: true, label: 'Site settings', title: 'Site settings: languages, header, banner and colors', blurb: 'Languages, contact email, header, banner and the original palette.',
   ref: '3.2 Website > General, Header, Appearance; 9.3 palette',
-  note: 'General, Header and Banner and accent save and change the public preview (each edition keeps its own banner and accent). Colors is read-only: the live site\'s preset themes were not described, so there are no free color pickers; the accent is a choice among three palette colors.',
+  note: 'General, Header and Banner save and change the public preview (each edition keeps its own banner). Colors lists the original palette (read-only); the editable palette of each edition is under Website, Site colors.',
   view: () => {
     const tab = u('set.tab', 'general');
-    return html`${P.tabs('set.tab', [['general', 'Languages and contact'], ['header', 'Header'], ['look', 'Banner and accent'], ['colors', 'Colors']], 'Settings sections', tab)}
+    return html`${P.tabs('set.tab', [['general', 'Languages and contact'], ['header', 'Header'], ['look', 'Banner'], ['colors', 'Colors']], 'Settings sections', tab)}
       ${tab === 'general' ? html`<section class="card"><h2>Languages and contact</h2>${P.formHTML('set-general', S.settings)}</section>`
-      : tab === 'header' ? html`<section class="card"><h2>Header</h2><p>The top part of the public website.</p>${P.formHTML('set-header', S.settings.header)}</section>`
-      : tab === 'look' ? html`<section class="card"><h2>Banner and accent color</h2><p>These belong to <strong>MIRC ${S.conf.year}</strong> only. The logo and title are on the “Header” tab.</p>${P.formHTML('set-look', { banner: S.conf.banner, accent: S.conf.accent })}</section>`
-        : html`<section class="card"><h2>Colors used on this website</h2><p>These colors come from the conference images. “Exact” means the value was measured on a flat area. “Estimate” means it was measured on a gradient or photo (blueprint section 9.3). Changing colors is not offered here.</p>
+      : tab === 'header' ? html`<section class="card"><h2>Header</h2><p>The top part of the public website. The logo and where it appears are managed under <a href="#/admin/logo">Conference, Logo</a>; the title below is independent of the logo.</p>${P.formHTML('set-header', S.settings.header)}</section>`
+      : tab === 'look' ? html`<section class="card"><h2>Banner</h2><p>This belongs to <strong>MIRC ${S.conf.year}</strong> only. The logo and title are on the “Header” tab; the colors are under <a href="#/admin/colors">Site colors</a>.</p>${P.formHTML('set-look', { banner: S.conf.banner })}</section>`
+        : html`<section class="card"><h2>Colors used on this website</h2><p>This table is the <strong>original palette</strong>, the starting point of every edition. “Exact” means the value was measured on a flat area. “Estimate” means it was measured on a gradient or photo (blueprint section 9.3). To change the colors visitors see, use <a href="#/admin/colors">Site colors</a>.</p>
         ${P.table({ caption: 'Color palette', empty: '', rows: C.PALETTE, cols: [{ h: 'Sample', v: c => html`<span class="swatch" style="background:${c[1]}" aria-hidden="true"></span>` }, { h: 'Name', v: c => c[0] }, { h: 'Code', v: c => c[1] }, { h: 'How sure', v: c => c[2] === 'exact' ? 'Exact' : 'Estimate' }, { h: 'Used for', v: c => c[3] }] })}</section>`}`;
   },
 });

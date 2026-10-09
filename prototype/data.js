@@ -10,8 +10,8 @@ const C = {
   STATUSES: ['Initial', 'Reviewed', 'Awaiting update', 'Accepted', 'Refused', 'No review'],
   EVENT_TYPES: ['Session', 'Speech/Intervention', 'Logistics', 'Break', 'Tour'],
   ROLES: ['Guest', 'Member', 'Webmaster', 'Reviewer', 'Redactor', 'Administrator', 'Coordinator', 'Participant'],
-  // Accent colors offered for the public site (all from the blueprint palette, used only as borders and fills, never as small text).
-  ACCENTS: [['gold', 'Gold (the current look)', '#e1ca5e'], ['leaf', 'Leaf green', '#297d1f'], ['forest', 'Forest green', '#296334']],
+  // The original visitor-site palette (blueprint 9.3 values). Every edition starts from it and can change its own copy (Website > Site colors).
+  THEME_DEFAULT: { primary: '#296334', secondary: '#0f3416', accent: '#e1ca5e', background: '#f8fbf7', surface: '#ffffff', text: '#2f4f4f', button: '#296334', border: '#e8f1e6' },
   // Details that can be asked on the public registration form. First name, last name and email are always asked.
   REG_OPTIONAL: [['title', 'Title (Dr., Ms. ...)'], ['middle', 'Middle name'], ['language', 'Language'], ['phone', 'Phone number'], ['institution', 'Institution'], ['address', 'Mailing address'], ['country', 'Country of the organization'], ['extra', 'More information']],
   PAGE_TYPES: ['Web link', 'File', 'Customizable page', 'Browse by author', 'Browse by speaker', 'Browse by type of document',
@@ -35,6 +35,13 @@ const C = {
     ['cream', '#FCFBF7', 'estimate', 'Warm background (not used here)'],
     ['tint-green', '#E8F1E6', 'estimate', 'Card borders, soft fills'],
   ],
+};
+
+/* A drawn placeholder logo (palette colors), so the prototype shows a real picture without any real logo file. */
+const sampleLogo = year => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><circle cx="300" cy="300" r="288" fill="#296334" stroke="#e1ca5e" stroke-width="14"/><text x="300" y="290" font-family="Arial, sans-serif" font-size="150" font-weight="800" fill="#ffffff" text-anchor="middle">MIRC</text><text x="300" y="425" font-family="Arial, sans-serif" font-size="125" font-weight="800" fill="#e1ca5e" text-anchor="middle">${year}</text></svg>`;
+  return { name: `mirc-${year}-logo-sample.svg`, kind: 'svg', mime: 'image/svg+xml', bytes: svg.length, w: 600, h: 600, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+    alt: `MIRC ${year} logo (sample placeholder)`, fit: 'contain', zoom: 1, x: 50, y: 50, fileId: 'f2', sample: true };
 };
 
 const MIRC_2026 = (() => {
@@ -151,20 +158,22 @@ const MIRC_2026 = (() => {
     // conf = what makes this edition different: identity, dates and deadlines, branding. days = every conference day, in order.
     conf: { id: 'mirc2026', year: YEAR, status: 'published', name: 'Manila International Research Conference 2026', place: 'Manila (Philippines)', venue: 'Pamantasan ng Lungsod ng Maynila (PLM)',
       tagline: 'Shaping Resilient Futures', sub: 'AI, Sustainability, and Inclusive Innovation', days: DAYS,
-      submission: { open: '2026-05-13', close: '2026-09-20' }, registrationDeadline: '2026-08-20', banner: '', accent: 'gold' },
+      submission: { open: '2026-05-13', close: '2026-09-20' }, registrationDeadline: '2026-08-20', banner: '' },
     topics: [...C.TOPICS],
     papers, users, registrations, reviewers, rooms, events, pages,
     homeBlocks: [{ id: 'h1', title: 'Conference Overview', body: 'The Manila International Research Conference 2026 (MIRC 2026) is a hybrid international academic conference. It brings together researchers, academicians, practitioners, policymakers and students to present and discuss research on AI, sustainability and innovation.\n\nThe main conference is held on 29-30 September 2026 at the PLM campus. A sub-conference on Hospitality and Tourism is held on 27 September 2026 at the DLSU-CSB campus.' }],
     news: [],
     files: [
       { id: 'f1', title: 'program.css', folder: 'css', ext: 'css', size: '0 B' },
-      { id: 'f2', title: 'header-logo.png', folder: 'header', ext: 'png', size: '20 KB' },
+      { id: 'f2', title: 'mirc-2026-logo-sample.svg', folder: 'header', ext: 'svg', size: '1 KB', logo: true },
       { id: 'f3', title: 'sponsor-logo-1.jpg', folder: 'pages', ext: 'jpg', size: '48 KB' },
       { id: 'f4', title: 'themes-screenshot.png', folder: 'pages', ext: 'png', size: '310 KB' },
     ],
     settings: {
       languages: ['English'], defaultLanguage: 'English', contactEmail: 'contact@example.org',
-      header: { type: 'Header quick form configuration', title: 'Manila International Research Conference 2026', subtitle: '', logoFile: 'header-logo.png', logoPlace: 'in the header', showDate: 'yes', showPlace: 'yes', html: '<p>Custom header HTML</p>', picture: 'header-logo.png' },
+      header: { type: 'Header quick form configuration', title: 'Manila International Research Conference 2026', subtitle: '', logoPlace: 'in the header', showDate: 'yes', showPlace: 'yes', html: '<p>Custom header HTML</p>', picture: 'header-logo.png' },
+      theme: { ...C.THEME_DEFAULT }, themePending: null, themeHistory: [],
+      logo: sampleLogo(YEAR), logoPending: null,   // each edition has its own logo (see logo.js); this one is a drawn placeholder, not the real logo
       showPapers: 'yes', registrationOpen: true, submissionOpen: false,
       regFields: Object.fromEntries(C.REG_OPTIONAL.map(([k]) => [k, 'optional'])),
     },

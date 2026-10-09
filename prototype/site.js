@@ -18,16 +18,20 @@ function siteMenu() {
   return html`<ul>${top.map(p => p.kind === 'folder'
     ? html`<li><details><summary>${p.title}</summary><ul>${kids(p).map(c => html`<li>${link(c)}</li>`)}</ul></details></li>` : html`<li>${link(p)}</li>`)}</ul>`;
 }
-function siteHead() {
+function siteHead(logo = P.shownLogo()) {   // logo: the one to show (the editor passes the unsaved one)
   const h = S.settings.header, c = S.conf;
   if (h.type === HTYPES[1]) return html`<iframe class="hdr-frame" sandbox title="Website header" srcdoc="${h.html}"></iframe>`;
   if (h.type === HTYPES[2]) return html`<p class="hdr-pic">Header picture: ${h.picture || '(none chosen)'} <span class="muted">(sample: the picture file is not included)</span></p>`;
   const meta = [h.showPlace === 'yes' && c.place, h.showDate === 'yes' && P.datesText(c.days)].filter(Boolean).join(' · ');
-  return html`<div class="hdr-quick">${h.logoFile && h.logoPlace === 'in the header' ? html`<div class="logo-box" aria-hidden="true">LOGO<br><small>${h.logoFile}</small></div>` : ''}
+  return html`<div class="hdr-quick">${logo && h.logoPlace === 'in the header' ? P.logoHTML(logo, 'lg') : ''}
     <div><p class="hero-mark small" aria-hidden="true">${c.year} MIRC</p><p class="site-name">${h.title}</p>${h.subtitle ? html`<p>${h.subtitle}</p>` : ''}${meta ? html`<p class="hdr-meta">${meta}</p>` : ''}</div></div>`;
 }
+P.siteHead = siteHead;
+/* The signed-in menu holds the person's own pages (submissions, registration, account details) and Log out, plus the Administration area for team roles.
+   It is not a portal or a dashboard, so it is called "My Account". The live Sciencesconf site calls it "My Space" (blueprint 2.6). */
 const userMenu = () => role() === 'Guest' ? html`<a class="btn btn-ghost" href="#/site/login">Sign in</a>`
-  : html`<details class="usermenu"><summary class="btn btn-ghost">My Space (${role()}) <span aria-hidden="true">▾</span></summary><ul>
+  : html`<details class="usermenu"><summary class="btn btn-ghost" title="Your registration, your submissions and your account details">My Account <span aria-hidden="true">▾</span></summary><ul>
+    <li class="menu-note">Signed in as ${role()} <span class="sr-only">(chosen with “Viewing as” in this prototype)</span></li>
     ${['Webmaster', 'Administrator', 'Coordinator', 'Reviewer'].includes(role()) ? html`<li><a href="#/admin">Administration area</a></li>` : ''}
     <li><a href="#/site/my-submissions">My submissions</a></li><li><a href="#/site/my-registration">My registration</a></li><li><a href="#/site/account">Edit account</a></li>
     <li><button type="button" class="linklike" data-act="logout">Log out</button></li></ul></details>`;
@@ -45,16 +49,17 @@ const notPublished = () => {
 };
 P.shells.site = m => {
   if (!P.canSeeEdition(P.edition())) return notPublished();
-  const r = m.r, body = r.view(m.params), t = P.title(r, m.params), accent = (C.ACCENTS.find(a => a[0] === S.conf.accent) || C.ACCENTS[0])[2];
-  return html`<div class="site" style="--accent: ${accent}">
-  ${siteBar()}
+  const r = m.r, body = r.view(m.params), t = P.title(r, m.params), parts = [P.pendingShown() && 'logo', P.themePendingShown() && 'colors'].filter(Boolean);
+  return html`${siteBar()}
   ${S.conf.status === 'draft' ? html`<p class="draft-strip" role="note"><strong>Draft preview.</strong> Visitors cannot see MIRC ${S.conf.year} yet. Publish it under “Editions (years)” in the administration area.</p>` : ''}
+  ${parts.length ? html`<p class="draft-strip" role="note"><strong>Branding preview.</strong> This edition has a draft ${parts.join(' and ')} that visitors cannot see yet. Publish ${parts.length > 1 ? 'them' : 'it'} under Conference, “Logo”, or Website, “Site colors”.</p>` : ''}
+  <div class="site" style="${P.theme.css(P.shownTheme())}">
   ${S.conf.banner ? html`<p class="site-banner" role="note">${S.conf.banner}</p>` : ''}
   <header class="sitehead">${siteHead()}</header>
-  <nav class="sitenav on-dark" aria-label="Website menu"><button type="button" class="btn btn-ghost" data-act="drawer" aria-haspopup="dialog"><span aria-hidden="true">☰</span>&nbsp;Menu</button>
+  <nav class="sitenav on-dark" aria-label="Website menu"><div class="nav-left">${S.settings.header.logoPlace === 'in the menu' ? P.logoHTML(P.shownLogo(), 'sm') : ''}<button type="button" class="btn btn-ghost" data-act="drawer" aria-haspopup="dialog"><span aria-hidden="true">☰</span>&nbsp;Menu</button></div>
     ${userMenu()}
     <dialog id="drawer" class="drawer on-dark" aria-label="Website menu" data-act="drawerbackdrop">
-      <div class="drawer-head"><strong>Menu</strong><button type="button" class="btn btn-ghost btn-small" data-act="drawerclose"><span aria-hidden="true">✖</span>&nbsp;Close</button></div>
+      <div class="drawer-head"><span class="nav-left">${S.settings.header.logoPlace !== 'no' ? P.logoHTML(P.shownLogo(), 'sm', true) : ''}<strong>Menu</strong></span><button type="button" class="btn btn-ghost btn-small" data-act="drawerclose"><span aria-hidden="true">✖</span>&nbsp;Close</button></div>
       <div class="sitemenu">${siteMenu()}</div></dialog></nav>
   <main id="main"><div class="main-in">${r.path === '/site' ? '' : html`<nav class="crumbs" aria-label="You are here"><ol><li><a href="#/site">Home</a></li><li><span aria-current="page">${t}</span></li></ol></nav>`}
     <h1 tabindex="-1">${r.path === '/site' ? S.conf.name : t}</h1><div id="fb">${msgHTML()}</div>${body}</div></main>
@@ -83,7 +88,7 @@ const needSignIn = what => html`<div class="alert alert-info"><span class="sym" 
 
 /* ---- Home ---- */
 site('/site', () => pageTitle('home', 'Home'), '2.2 Home; 10.3 Home structure; 9.6 Hero', gate('home', 'Home', () => html`
-  <section class="hero card"><p class="hero-mark" aria-hidden="true">${S.conf.year} MIRC</p><p class="tagline">${S.conf.tagline}</p>${S.conf.sub ? html`<p>${S.conf.sub}</p>` : ''}
+  <section class="hero card">${S.settings.header.logoPlace !== 'no' && P.shownLogo() ? html`<div class="hero-logo">${P.logoHTML(P.shownLogo(), 'md', true)}</div>` : ''}<p class="hero-mark" aria-hidden="true">${S.conf.year} MIRC</p><p class="tagline">${S.conf.tagline}</p>${S.conf.sub ? html`<p>${S.conf.sub}</p>` : ''}
     <p class="facts">${P.datesText(S.conf.days)}${S.conf.venue ? ' · ' + S.conf.venue : ''}</p>
     <div class="actions center"><a class="btn btn-gold" href="#/site/registration">${S.settings.registrationOpen ? 'Register' : 'Registration (closed)'}</a><a class="btn btn-secondary" href="#/site/submit">Abstract submission (${S.settings.submissionOpen ? 'open' : 'closed'})</a></div></section>
   ${S.homeBlocks.map(b => html`<section class="card"><h2>${b.title}</h2>${P.text(b.body)}</section>`)}

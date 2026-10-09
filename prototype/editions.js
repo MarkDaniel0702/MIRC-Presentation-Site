@@ -14,10 +14,10 @@ P.newEdition = ({ from, year, copyTexts = false }) => {
   const src = P.edition(from), y = Number(year), old = String(src.conf.year), swap = t => String(t ?? '').replaceAll(old, String(y));
   return {
     conf: { ...cp(src.conf), id: 'mirc' + y, year: y, status: 'draft', name: swap(src.conf.name), days: [], submission: { open: '', close: '' }, registrationDeadline: '', banner: '' },
-    topics: cp(src.topics), rooms: cp(src.rooms), files: cp(src.files),
+    topics: cp(src.topics), rooms: cp(src.rooms), files: cp(src.files).filter(f => !f.logo),   // each edition brings its own logo
     templates: src.templates.map(t => ({ ...cp(t), subject: swap(t.subject), originalSubject: swap(t.originalSubject) })),
     pages: src.pages.map(p => ({ ...cp(p), body: copyTexts ? p.body : '' })),
-    settings: { ...cp(src.settings), registrationOpen: false, submissionOpen: false, header: { ...cp(src.settings.header), title: swap(src.settings.header.title) } },
+    settings: { ...cp(src.settings), registrationOpen: false, submissionOpen: false, logo: null, logoPending: null, themePending: null, themeHistory: [], header: { ...cp(src.settings.header), title: swap(src.settings.header.title) } },
     aliases: src.aliases.map(a => ({ ...a, name: swap(a.name) })), mailLook: { ...cp(src.mailLook), header: swap(src.mailLook.header) },
     papers: [], registrations: [], reviewers: [], events: [], homeBlocks: [], news: [], lists: [], mailLog: [], rightsGroups: { ...cp(src.rightsGroups), Reviewer: 0 },
   };
@@ -39,6 +39,7 @@ P.readiness = e => {
   if (c.days.length && !e.events.length) note.push('The schedule is empty, so visitors will see “Nothing is planned”.');
   if (!c.submission.open || !c.submission.close) note.push('The abstract submission dates are not set.');
   if (!c.registrationDeadline) note.push('The registration deadline is not set.');
+  if (!e.settings.logo) note.push('No logo has been uploaded yet (Conference, Logo).');
   if (/\(sample\)|to be announced/i.test(c.venue + c.tagline + c.place)) note.push('The place, venue or theme still says “to be announced”.');
   const empty = e.pages.filter(p => p.kind === 'text' && !p.body).length;
   if (empty) note.push(`${empty} text page${empty > 1 ? 's have' : ' has'} no text yet.`);
@@ -65,7 +66,7 @@ P.add({
   view: () => html`<p class="lead">Every conference year is one “edition”. All editions use the same website. Each has its own dates, schedule, pages, papers and people, so working on one never changes another.</p>
     <div class="actions"><button type="button" class="btn btn-primary" data-act="ednew">Create a new edition</button></div>
     ${P.table({ caption: 'Conference editions', empty: 'No edition yet.', rows: ED.list, cols: [
-      { h: 'Edition', v: e => html`<strong>MIRC ${e.conf.year}</strong>${e.conf.id === ED.cur ? html` <span class="muted">(you are working on this one)</span>` : ''}<br><span class="muted">${P.datesText(e.conf.days)}</span><br><span class="muted">${counts(e)} (sample)</span>` },
+      { h: 'Edition', v: e => html`${P.logoHTML(e.settings.logo, 'sm', true)}<br><strong>MIRC ${e.conf.year}</strong>${e.conf.id === ED.cur ? html` <span class="muted">(you are working on this one)</span>` : ''}<br><span class="muted">${P.datesText(e.conf.days)}</span><br><span class="muted">${counts(e)} (sample)</span>` },
       { h: 'Status', v: e => html`${P.badge(stat(e))}<br><span class="muted">${e.conf.status === 'published' ? 'Visitors can see it.' : 'Only the team can see it.'}</span><br><a href="#/site?ed=${e.conf.id}">Link for visitors</a>${e.conf.status === 'draft' ? html` <span class="muted">(works once published)</span>` : ''}` },
       { h: 'Actions', v: e => html`${e.conf.id === ED.cur ? '' : html`<button type="button" class="btn btn-small" data-act="edwork" data-id="${e.conf.id}" aria-label="Work on MIRC ${e.conf.year}">Work on it</button>`}
         <button type="button" class="btn btn-small btn-secondary" data-act="edpreview" data-id="${e.conf.id}" aria-label="Preview MIRC ${e.conf.year} as visitors see it">Preview</button>

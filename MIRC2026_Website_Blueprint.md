@@ -102,7 +102,7 @@ The gap between 253 registrations and 240 listed names is **not explained** on t
 ### 2.1 Global page layout (all public pages)
 | Zone | Contents (observed) |
 |---|---|
-| **Admin bar** (top, thin) | Sciencesconf logo (links to `www.sciencesconf.org`); **My Space** link; user avatar/initials dropdown with: *My submissions*, *My registration*, *Edit account*, *Logout* |
+| **Admin bar** (top, thin) | Sciencesconf logo (links to `www.sciencesconf.org`); **My Space** link; user avatar/initials dropdown with: *My submissions*, *My registration*, *Edit account*, *Logout*. **Rebuild label (prototype v5):** the signed-in button on the public site is called **My Account**, because it opens exactly those personal items (plus the Administration area for team roles); see `prototype/README.md` section 12.1 |
 | **Conference header** (banner) | Conference logo image (left), title, location line, date range. Header is configurable (see back office > Website > Header) |
 | **Main menu** (horizontal, below banner) | 11 items, listed in 2.2 |
 | **Breadcrumb** | Home icon > current page title |
@@ -170,6 +170,8 @@ Observed for an already-registered user: a green notice "Your registration has b
 **Not confirmed:** the empty registration form for a new registrant, registration fee tiers/options, payment method, and what "Preregister / Need a payment / Registered" mean to the end user (these labels exist in the back office; see 3.6).
 
 ### 2.6 Account / My Space (visible to any logged-in user)
+
+> Naming: “My Space” is what the live Sciencesconf site calls it. In the rebuild the public button is **My Account** (it opens the person's registration, submissions, account details and Log out); the back office stays reachable from it for team roles. The rows below describe the live site.
 | Item | Observed |
 |---|---|
 | My Space | `/myspace` — for this organizer account it is the full back office (section 3). What an ordinary participant sees at this URL is **not confirmed**. |
@@ -540,6 +542,7 @@ Design notes taken from the observed behaviour:
 - Store page text per language (JSON column) because titles carry language suffixes (`_en`) in the observed forms.
 - The status filter also acts as a **mailing recipient group** and **book criterion**, so one status query service should feed all three.
 - Role rights belong on the **page**, not only on the user.
+- **Logo (prototype v4):** `conference.logo_url` is too thin for per-edition branding. Store the logo as its own record per conference (file id, alt text, fit, zoom, position, draft or published), keep the original file untouched, and put the conference id in the file path so one edition can never overwrite another's logo. Standard frame and file limits are in `prototype/README.md` section 11.
 
 ### 7.2 Suggested screens (back office parity)
 1. Dashboard of module cards (7 modules).
@@ -766,6 +769,23 @@ Tailwind v4 defines color tokens in CSS with an `@theme` block, which also gener
 }
 ```
 
+### 9.10 Visitor-site palette settings (prototype v5)
+
+The palette above is the **default** for every edition. The prototype lets each edition change its own copy (Website › Site colors), for the public site only. The administration area keeps the default palette.
+
+| Setting | Meaning | Default |
+|---|---|---|
+| primary | Headings, links, tabs, outline of secondary buttons | `forest` `#296334` |
+| secondary | Navigation bar, menu panel, footer | `deep-green` `#0f3416` |
+| accent | Header line, accent button, highlights | `gold-300` `#e1ca5e` |
+| background | Page | `mist` `#f8fbf7` |
+| surface | Cards, header, forms, tables | `white` `#ffffff` |
+| text | Body text, form field outlines | `slate-green` `#2f4f4f` |
+| button | Main button fill | `forest` `#296334` |
+| border | Card outlines, table heading fill | `tint-green` `#e8f1e6` |
+
+Derived, never entered: text on buttons and bars, hover and pressed colors, focus ring color. Status colors (done, note, warning, problem) are fixed and always paired with a word and a symbol. Twelve contrast checks (WCAG 2.1: 4.5:1 text, 3:1 outlines and focus) run live; a failing palette can still be saved only after an explicit confirmation. Stored per conference with a draft/published state and the last five replaced palettes; the production data model and permission rules are in `prototype/README.md` section 12.3. The accent button now uses `gold-300` instead of `gold-500` (navy text on it reaches more than 10:1).
+
 ---
 
 ## 10. Information architecture and page structure (v2)
@@ -797,6 +817,7 @@ Tailwind v4 defines color tokens in CSS with an `@theme` block, which also gener
 ### 10.2 Navigation
 
 - The live site shows a flat menu of 12 items. That is long for a phone. **RECOMMENDATION:** group them as Programme (programme, detailed program, guidelines), About (committee, speakers, dates, themes, venue, participants), then Register and Submit as two always-visible buttons. UNRESOLVED if the organizers prefer the flat menu (D7).
+- The signed-in menu in the bar is labelled **My Account** (contents: My submissions, My registration, Edit account, Log out; team roles also get the Administration area). Signed-out visitors see **Sign in**.
 - Always show state-aware buttons: "Submit abstract" shows the open period, or "Closed" with the close date. "Register" shows the deadline.
 - A breadcrumb (home icon > current page) matches the live site.
 - Footer: organizer contact, legal, privacy, accessibility statement, partner and sponsor logos, RSS if news is built.
