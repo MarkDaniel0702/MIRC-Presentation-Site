@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-size="2">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MIRC 2026 conference manager (prototype)</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button type="button" class="skip" data-act="skip">Skip to the main content</button>
+  <div class="proto-banner" role="note">
+    <p><strong>PROTOTYPE.</strong> All names, papers and numbers are <strong>sample data</strong>. Nothing is saved on a server or sent by email. Changes disappear when you reload this page.</p>
+    <button type="button" id="reset" class="btn btn-small btn-secondary">Start over (reset the sample data)</button>
+  </div>
+  <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+  <div id="app"><noscript><p>This prototype needs JavaScript. Please turn it on in your browser.</p></noscript></div>
+  <dialog id="dlg" aria-labelledby="dlg-title"></dialog>
+  <!-- Classic scripts (not modules) so this page also works when opened straight from a folder. Order matters. -->
+  <script src="data.js"></script>
+  <script src="core.js"></script>
+  <script src="admin.js"></script>
+  <script src="site.js"></script>
+  <script>P.start();</script>
+</body>
+</html>
