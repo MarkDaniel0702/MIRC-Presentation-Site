@@ -11,6 +11,21 @@ const C = {
   STATUSES: ['Initial', 'Reviewed', 'Awaiting update', 'Accepted', 'Refused', 'No review'],
   EVENT_TYPES: ['Session', 'Speech/Intervention', 'Logistics', 'Break', 'Tour'],
   ROLES: ['Guest', 'Member', 'Webmaster', 'Reviewer', 'Redactor', 'Administrator', 'Coordinator', 'Participant'],
+  // Abstract scoring sheet (admin: Score this abstract). A rating is a whole number 1 to 5; score = sum(rating / 5 * weight), 0 to 100. The weights add up to 100.
+  CRITERIA: [
+    { name: 'Relevance to Journal Scope', weight: 25, text: 'The abstract clearly aligns with the theme and demonstrates relevance to technological innovation, sustainability, or community transformation.' },
+    { name: 'Originality and Contribution', weight: 15, text: 'The study presents a potentially novel question, perspective, application, or contribution. No obvious signs of duplicated or recycled work are apparent from the submission.' },
+    { name: 'Clarity and Readability', weight: 15, text: 'The abstract is organized, coherent, and written in understandable academic English, with a clear purpose and logical flow.' },
+    { name: 'Compliance with Abstract Guidelines', weight: 10, text: 'The submission follows the prescribed abstract word limit, required components, structure, and submission instructions.' },
+    { name: 'Ethical Integrity', weight: 10, text: 'The abstract raises no apparent ethical concerns, appropriately describes research involving human participants where relevant, and includes any required ethics information or declarations.' },
+    { name: 'Minimum Scholarly Merit', weight: 25, text: 'The abstract identifies a clear research problem or objective, an appropriate methodology or approach, and findings, expected outputs, or a credible anticipated contribution.' },
+  ],
+  // Recommended decision by score, highest band first. PROPOSED editorial guidelines, not approved policy (shown as such on the scoring page).
+  BANDS: [
+    { min: 75, range: '75-100', label: 'Recommended for full manuscript review', text: 'The abstract demonstrates sufficient relevance, clarity, and scholarly potential to proceed to the next stage.' },
+    { min: 60, range: '60-74.9', label: 'Borderline: revise or conduct further screening', text: 'The abstract may be reconsidered after clarification or revision, subject to the journal\'s submission policy.' },
+    { min: 0, range: 'Below 60', label: 'Not recommended for full manuscript review', text: 'The abstract does not sufficiently meet the initial screening requirements.' },
+  ],
   // The original visitor-site palette (blueprint 9.3 values). Every edition starts from it and can change its own copy (Website > Site colors).
   THEME_DEFAULT: { primary: '#296334', secondary: '#0f3416', accent: '#e1ca5e', background: '#f8fbf7', surface: '#ffffff', text: '#2f4f4f', button: '#296334', border: '#e8f1e6' },
   // Details that can be asked on the public registration form. First name, last name and email are always asked.

@@ -308,3 +308,8 @@ input.color-pick { width: 3.5rem; min-width: 3.5rem; height: 3rem; padding: .2re
 }
 @media (max-width: 56em) { .density { display: none; } }
 @media print { .proto-banner, .topbar, .sidenav, .sitebar, .sitenav, .tabs, .actions, .menu-toggle, .refbox, dialog { display: none !important; } .layout { display: block; } body { background: #fff; } }
+/* abstract scoring page: the five rating choices sit in one row; the score card stays in view while the criteria are rated */
+.scale { display: flex; flex-wrap: wrap; gap: 0 1.75rem; }
+.score-num { font-size: 2rem; font-weight: 700; line-height: 1; }
+.scorebar { position: sticky; bottom: .5rem; z-index: 5; box-shadow: 0 -2px 8px rgba(0, 0, 0, .15); }
+@media (max-width: 56em) { .scorebar { position: static; } }

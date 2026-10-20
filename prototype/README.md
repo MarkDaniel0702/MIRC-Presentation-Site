@@ -33,6 +33,7 @@ These are always on screen:
 12. **Editions (years)** → **Preview** a draft → **Publish** (the confirmation lists what is still missing) → on the public site set “Viewing as” to Guest and use the **Conference** and **Year** boxes to see only published editions. **Hide** puts it back to draft.
 13. In the dark top bar choose **Conference › PANTAS**: the name, short mark, logo, colors, email subjects and every page title change to PANTAS 2026. Choose **MIRC** again: you are back on MIRC 2026. Nothing else was touched.
 14. **Conference › My conferences** → **Create a new conference** → type a name (“Visayas Health Summit”), a short name (“VHS”), a year, the first and last day, a place, two brand colors → **Create**. It is now in the Conference box, with its own colors and logo on the public site. **Reload the page**: it is still there. Use **Change** or **Delete** in the same list.
+15. **Papers received** → **Open** a paper → **Score this abstract** → click a rating from 1 to 5 for each of the six criteria and watch the weighted score and the recommended decision change. Note the line saying the score bands still need editorial approval. **Clear all ratings** starts again.
 
 ## 2. Files
 
@@ -116,9 +117,9 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | 3.4.1 Reviewing › Papers | `#/admin/review-papers` | Works |
 | 3.4.1 Reviewing › New submissions | `#/admin/review-inbox` | Interface only. Shows the “review period closed” state seen on the live site |
 | 3.4.1 Reviewing › Submissions reviewed | `#/admin/review-done` | Interface only. Shows the empty state |
-| (reviewer's scoring form) | not built | **Pending**: review rules are undecided (decision D12) |
+| 3.4.1 Reviewing › reviewer's scoring sheet (six weighted criteria, ratings 1 to 5) | `#/admin/papers/<number>/score` | Works. The weighted score (0 to 100) and the recommended decision are worked out as you click. Ratings stay in this browser tab only; nothing is saved on the paper. The three decision bands are **proposed guidelines awaiting editorial approval**, and the page says so. The written opinion form is still pending (D12) |
 | 3.4.2 Editorial › Submissions (filters, bulk actions) | `#/admin/papers` | Works |
-| 3.4.2 Submission detail (accept, refuse, request changes, notes, history, delete) | `#/admin/papers/<number>` | Works. No email is sent to the author. Reviewer opinions are empty (D12) |
+| 3.4.2 Submission detail (accept, refuse, request changes, notes, history, delete) | `#/admin/papers/<number>` | Works. No email is sent to the author. Reviewer opinions are empty (D12). “Score this abstract” opens the scoring sheet |
 | 3.4.3 Editorial › Proceedings (3 steps) | `#/admin/book` | Works as a preview and a CSV list. Step 2 is only partly defined in the blueprint. The PDF book is a switched-off button (needs the server part) |
 | 3.5 Mailing › Mailing | `#/admin/mail` | Simulated. Groups, template fill-in, counts and checks work. Sending only records a line. The three Yes/No options are kept but marked “meaning not confirmed” |
 | 3.5 Mailing › Templates | `#/admin/mail/templates` | Works (change, restore original, delete, create) |
@@ -158,7 +159,7 @@ Status words: **Works** = works on the sample data in the browser. **Simulated**
 | Sending email, email deliverability | Needs an email service and a sender domain (12.2, 15.4) |
 | File upload and download of real files | Needs storage (12.2) |
 | PDF book of abstracts, certificates | Needs a server-side PDF job (blueprint 6, 12.2). Certificates are also an open decision (D8) |
-| Reviewer scoring form | Review rules undecided (D12) |
+| Reviewer's written opinion form; saving a score on the paper | Review rules undecided (D12). The scoring sheet only calculates, and its bands need editorial approval |
 | Online payment, fee tiers | Undecided (D5) |
 | Full text editor (bold, links, lists) | Text boxes are plain. A real editor needs sanitizing of the HTML it makes (13.1) |
 | Interface languages (French, Spanish) | The blueprint assumes English to start (A3, D7) |
@@ -237,8 +238,9 @@ These need Python with Playwright: `python -m pip install playwright` then `pyth
 
 | Command | What it checks |
 |---|---|
-| `python tests/crawl.py` | All 45 pages, as Guest and Participant on MIRC 2026, as Administrator on the empty MIRC 2027 draft, and as Guest and Administrator on PANTAS 2026: no console errors, no dead links, every button has an action, no repeated ids, a way back to the Dashboard |
+| `python tests/crawl.py` | All 46 pages, as Guest and Participant on MIRC 2026, as Administrator on the empty MIRC 2027 draft, and as Guest and Administrator on PANTAS 2026: no console errors, no dead links, every button has an action, no repeated ids, a way back to the Dashboard |
 | `python tests/conference-builder.py` | 41 checks of the conference builder: every refusal message (empty boxes, duplicate name or short name with other capitals and extra spaces, last day before first, first day outside the year, unreadable colors), create, the new conference in the Conference and Year boxes, its public site and colors, creating another year for it, saved across a reload, damaged or unreadable saved data, change (including the short name following everywhere), delete (with “No, go back”), and reuse of the names afterwards. It uses its own browser profile and clears what it saved |
+| `python tests/scoring.py` | 27 checks of the abstract scoring sheet: the six criteria with description, weight and 1 to 5 rating; the score worked out as you click; the recommended decision at every band edge (59, 60, 74, 75); points per criterion; the approval note; clear, per-paper ratings, keyboard use; and the links to the page |
 | `python tests/workflows.py` | 84 checks of the main workflows end to end |
 | `python tests/layout-contrast.py` | No sideways scrolling at 1280, 820 and 390 px wide; rendered text contrast on every page; visible focus ring; control sizes. Saves screenshots to a temporary folder and prints where |
 | `python tests/editions.py` | 79 checks, 21 of them about several conferences (the picker, switching, PANTAS name/mark/colors/logo/email subjects, nothing of MIRC left in a PANTAS copy, duplicate years per conference, order of the list): calendar by mouse and keyboard, not-available days, date fields in forms, phone width; editions stay separate, draft/published visibility, create/publish/hide/delete, dates and topics validation, registration-form settings, banner and accent |
@@ -257,7 +259,7 @@ These need Python with Playwright: `python -m pip install playwright` then `pyth
 The plan is in the blueprint: technology in section 12, security in 13, testing in 14, deployment in 15, phases in 16, open decisions in 17. In short:
 
 1. **Settle the open decisions** that block the build: which edition and purpose (D1), replace or complement Sciencesconf (D2), hosting plan terms (D4), fees (D5), brand details including error and info colors and a font (D6), review rules (D12).
-2. **Build the server part**: accounts and roles, a database with per-role access rules, file storage, an email service with a verified sender domain, PDF generation, and the review form.
+2. **Build the server part**: accounts and roles, a database with per-role access rules, file storage, an email service with a verified sender domain, PDF generation, and the review form (the scoring sheet's ratings would be stored per reviewer and per paper).
 3. **Replace the stand-ins**: a real text editor with sanitized output, real partner logos (with permission), real content, real statistics.
 4. **Harden and test**: security review, load test around deadlines, backup restore test, a full accessibility audit with a screen reader and **real older users**, and a trial run of the data import.
 5. **Deploy** using the environments and secrets handling in blueprint section 15.
@@ -291,7 +293,7 @@ The plan is in the blueprint: technology in section 12, security in 13, testing 
 | Logos and files are names only | File storage and virus scanning; image size limits |
 | Banner and accent are three fixed choices | A reviewed theme list (D6); a full theme editor would need contrast checks built in |
 | Registration and abstract forms send nothing | Form handling, email service, spam protection, privacy notice (blueprint 13) |
-| Fees, payment options, review rules | Still undecided (D5, D12) and not built |
+| Fees, payment options, saved reviews | Still undecided (D5, D12) and not built. The score bands also need editorial approval |
 | One topic list per edition, edited as text | A topics table with ids, so renaming a topic updates papers and sessions |
 
 **Not tested:** other browsers, real phones and tablets, a screen reader (the calendar uses button, grid and live-region roles but was only checked by script), and use by actual older adults.

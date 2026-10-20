@@ -172,8 +172,8 @@ P.add({
     <section class="card" aria-labelledby="d3"><h2 id="d3">Type and topic</h2>${P.formHTML('paper-meta', start)}</section>
     <section class="card" aria-labelledby="d4"><h2 id="d4">Reviewers and their opinions</h2>
       <p>${revs.length ? 'Reviewers for this paper: ' + revs.map(r => r.name).join(', ') + '.' : 'No reviewer has been chosen for this paper yet.'}</p>
-      <p>Opinions received: <strong>0 of ${revs.length}</strong>. The review form is not defined yet (blueprint decision D12).</p>
-      <a href="#/admin/review-papers">Choose reviewers</a></section>
+      <p>Opinions received: <strong>0 of ${revs.length}</strong>. The written opinion form is not defined yet (blueprint decision D12). The scoring sheet below is.</p>
+      <div class="actions"><a class="btn btn-primary" href="#/admin/papers/${p.id}/score">Score this abstract</a><a class="btn btn-secondary" href="#/admin/review-papers">Choose reviewers</a></div></section>
     <section class="card" aria-labelledby="d5"><h2 id="d5">Notes and comments</h2>${P.formHTML('paper-note', { note: p.note })}<hr>${P.formHTML('paper-comment', { comment: p.comment })}</section>
     <section class="card" aria-labelledby="d6"><h2 id="d6">History</h2>${P.table({ caption: 'History of this paper', empty: 'No history yet.', rows: p.history, cols: [{ h: 'Date', v: 'date' }, { h: 'Action', v: 'action' }, { h: 'Done by', v: 'user' }, { h: 'Comment', v: 'comment' }] })}</section>
     <section class="card" aria-labelledby="d7"><h2 id="d7">Delete</h2><p>Deleting removes the paper for good.</p>
@@ -280,7 +280,7 @@ P.add({
   path: '/admin/review-papers', area: 'admin', group: 'Reviewers', nav: true, label: 'Who reviews which paper', title: 'Who reviews which paper',
   blurb: 'Check that every paper has a reviewer.',
   ref: '3.4.1 Reviewing > Papers (distribution by reviewer; filters status, type, topic)',
-  note: 'Filters and “Add a reviewer” work on the sample data.',
+  note: 'Filters and “Add a reviewer” work on the sample data. “Score” opens the abstract scoring sheet.',
   view: () => {
     const none = u('rp.view', 'all') === 'none', st = u('rp.status', ''), ty = u('rp.type', ''), tp = u('rp.topic', '');
     const list = S.papers.filter(p => (!none || !P.paperReviewers(p).length) && (!st || p.status === st) && (!ty || p.type === ty) && (!tp || p.topic === tp));
@@ -293,16 +293,44 @@ P.add({
       ${P.table({ caption: 'Papers and their reviewers', empty: 'No paper matches. Try “Clear all filters”.', rows: list, cols: [
         { h: 'Paper', v: p => html`<strong>${p.title}</strong><br><span class="muted">${p.topic}</span>` },
         { h: 'Reviewers', v: p => { const r = P.paperReviewers(p); return r.length ? r.map(x => x.name).join(', ') : 'No reviewer yet'; } },
-        { h: 'Action', v: p => html`<button type="button" class="btn btn-small" data-act="addrev" data-id="${p.id}">Add a reviewer</button>` }] })}`;
+        { h: 'Action', v: p => html`<button type="button" class="btn btn-small" data-act="addrev" data-id="${p.id}">Add a reviewer</button> <a class="btn btn-small btn-secondary" href="#/admin/papers/${p.id}/score" aria-label="Score the abstract: ${p.title}">Score</a>` }] })}`;
   },
 });
 P.add({
   path: '/admin/review-inbox', area: 'admin', group: 'Reviewers', nav: true, label: 'Papers waiting for review', title: 'Papers waiting for review (reviewer\'s own view)',
   blurb: 'What a reviewer sees when logged in.',
   ref: '3.4.1 Reviewing > New submissions',
-  note: 'Shows the state seen on the live site: review period closed, nothing to review. The review form itself is not defined (blueprint decision D12), so it is not built.',
+  note: 'Shows the state seen on the live site: review period closed, nothing to review. The written opinion form is not defined (blueprint decision D12), so it is not built. The scoring sheet is reached from a paper (“Score this abstract”).',
   view: () => html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> The review period is closed. Opening period for reviewing: not set.</div></div>
-    <p class="empty">No paper to review.</p><p>The page where a reviewer writes an opinion has not been designed yet. It is waiting for the review rules (decision D12 in the blueprint).</p>`,
+    <p class="empty">No paper to review.</p><p>The page where a reviewer writes an opinion has not been designed yet. It is waiting for the review rules (decision D12 in the blueprint). The abstract scoring sheet can already be tried: open a paper and choose “Score this abstract”.</p>`,
+});
+/* ---- Score an abstract: six weighted criteria, a score from 0 to 100 and the recommended decision. Ratings are kept in P.ui (this tab only), like the filters. ---- */
+P.add({
+  path: '/admin/papers/:id/score', area: 'admin', group: 'Papers and decisions', parent: '/admin/papers',
+  title: ({ id }) => 'Score the abstract: ' + (paperById(id)?.title || 'paper not found'), crumb: 'Score an abstract',
+  ref: '3.4.1 Reviewing (the reviewer’s form, blueprint decision D12). Criteria, weights and decision bands proposed by the editorial team.',
+  note: 'Works on the sample data: the score and the recommended decision are worked out as you click. Ratings are kept only in this browser tab; nothing is saved on the paper or sent. The decision bands are proposed guidelines, not approved policy.',
+  view: ({ id }) => {
+    const p = paperById(id);
+    if (!p) return html`<p class="lead">This paper does not exist (it may have been deleted).</p><a class="btn btn-primary" href="#/admin/papers">Back to papers received</a>`;
+    const key = i => `sc.${p.id}.${i}`, R = C.CRITERIA.map((c, i) => +u(key(i), 0)), done = R.filter(Boolean).length, all = done === R.length,
+      score = R.reduce((s, r, i) => s + r * C.CRITERIA[i].weight / 5, 0), band = C.BANDS.find(b => score >= b.min);
+    return html`
+    <a class="btn btn-secondary" href="#/admin/papers/${p.id}">Back to the paper</a>
+    <p class="lead">Rate each of the ${R.length} criteria from 1 (lowest) to 5 (highest). The weighted score and the recommended decision are worked out for you.</p>
+    <section class="card" aria-labelledby="sa"><h2 id="sa">The abstract</h2><h3>${p.title}</h3><p class="muted">${authorsOf(p)}</p><p>${p.abstract}</p></section>
+    ${C.CRITERIA.map((c, i) => html`<fieldset class="field"><legend>${i + 1}. ${c.name} <span class="muted">(weight ${c.weight}%)</span></legend>
+      <p class="hint">${c.text}</p><div class="scale">${[1, 2, 3, 4, 5].map(n => rad(key(i), String(n), n, ''))}</div>
+      ${R[i] ? html`<p class="hint">Points: ${R[i] * c.weight / 5} of ${c.weight}</p>` : ''}</fieldset>`)}
+    <section class="card scorebar" aria-labelledby="sr"><h2 id="sr">Weighted score</h2>
+      <p><span class="score-num">${score.toFixed(1)}</span> out of 100 · ${done} of ${R.length} criteria rated</p>
+      <p>${all ? html`<strong>Recommended decision (proposed, awaiting editorial approval): ${band.label}.</strong> ${band.text}` : 'Rate every criterion to see the recommended decision.'}</p>
+      <button type="button" class="btn btn-secondary" data-act="clearfilters" data-prefix="${key('')}">Clear all ratings</button></section>
+    <section class="card" aria-labelledby="sg"><h2 id="sg">Decision guide</h2>
+      <div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> These thresholds are proposed editorial guidelines, not established PANTAS policies. The editorial team should approve them before implementation.</div></div>
+      ${P.table({ caption: 'Recommended decision by score', rows: C.BANDS, cols: [
+        { h: 'Score', v: b => html`${b.range}${all && b === band ? html` <strong>(this abstract)</strong>` : ''}` }, { h: 'Recommended decision', v: 'label' }, { h: 'What it means', v: 'text' }] })}</section>`;
+  },
 });
 P.add({
   path: '/admin/review-done', area: 'admin', group: 'Reviewers', nav: true, label: 'Papers already reviewed', title: 'Papers already reviewed (reviewer\'s own view)',
