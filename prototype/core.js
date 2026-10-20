@@ -1,4 +1,4 @@
-/* MIRC prototype: shared core (router, safe HTML templates, forms, dialogs, feedback, edition switching).
+/* Conference prototype: shared core (router, safe HTML templates, forms, dialogs, feedback, edition switching).
    Everything runs in the browser. ED.list holds one in-memory record per conference edition: changes last until reload.
    S is a window onto the edition being worked on, so S.papers, S.events ... always mean "this edition".
    People (users) are shared by all editions, as in blueprint 7.1 (the user table has no conference id). */
@@ -8,6 +8,11 @@ const P = window.P = { routes: [], ui: {}, sel: {}, fe: {}, act: {}, formDefs: {
 const ED = P.ED = { list: structuredClone(EDITIONS), cur: EDITIONS[0].conf.id, users: structuredClone(EDITIONS[0].users) };
 ED.list.forEach(e => { delete e.users; });
 P.edition = id => ED.list.find(e => e.conf.id === (id || ED.cur));
+/* The conference an edition belongs to (CONFERENCES in conferences.js) and its short label, e.g. "MIRC 2026". Use these instead of typing a name. */
+P.series = e => CONFERENCES[(e || P.edition()).conf.series];
+P.tag = e => `${P.series(e).code} ${(e || P.edition()).conf.year}`;
+P.byConf = (a, b) => Object.keys(CONFERENCES).indexOf(a.conf.series) - Object.keys(CONFERENCES).indexOf(b.conf.series) || a.conf.year - b.conf.year;
+P.latest = () => { const l = ED.list.filter(e => e.conf.status === 'published'); return [...l].reverse().find(e => e.conf.series === S.conf.series) || l[l.length - 1]; };   // newest published edition, of this conference first
 const S = P.S = new Proxy({}, {
   get: (_, k) => k === 'users' ? ED.users : P.edition()[k],
   set: (_, k, v) => { if (k === 'users') ED.users = v; else P.edition()[k] = v; return true; },
@@ -40,15 +45,15 @@ P.text = s => html`${String(s || '').split(/\n\s*\n/).filter(Boolean).map(b => {
 const SYM = { ok: '✔', info: 'i', warn: '!', error: '✖' };
 const LBL = { ok: 'Done', info: 'Note', warn: 'Please note', error: 'Problem' };
 const msgHTML = () => !P.msg ? html`` : html`<div class="alert alert-${P.msg.kind}"><span class="sym" aria-hidden="true">${SYM[P.msg.kind]}</span>
-  <div><strong>${LBL[P.msg.kind]}.</strong> ${P.msg.text}${P.msg.kind === 'ok' ? html` <span class="muted">(Simulated: kept only in this browser tab, nothing is saved on a server.)</span>` : ''}</div>
+  <div><strong>${LBL[P.msg.kind]}.</strong> ${P.msg.text}${P.msg.kind === 'ok' ? html` <span class="muted">${P.msg.saved ? '(Saved in this browser: it is still here after a reload. Nothing is saved on a server.)' : '(Simulated: kept only in this browser tab, nothing is saved on a server.)'}</span>` : ''}</div>
   <button type="button" class="linklike" data-act="dismiss">Close message</button></div>`;
-P.say = (kind, text) => {
-  P.msg = { kind, text };
+P.say = (kind, text, saved) => {   // saved = true when the change was really stored in this browser (only the conference builder does that)
+  P.msg = { kind, text, saved };
   const fb = $('#fb');
   if (fb) { fb.innerHTML = msgHTML().s; fb.scrollIntoView({ block: 'nearest' }); }
   $('#live').textContent = (LBL[kind] + '. ' + (text instanceof Raw ? text.s.replace(/<[^>]+>/g, '') : text));
 };
-P.goSay = (path, kind, text) => { P.msg = { kind, text }; P.keep = true; P.go(path); };
+P.goSay = (path, kind, text, saved) => { P.msg = { kind, text, saved }; P.keep = true; P.go(path); };
 
 /* ---------- form fields: labels, hints, plain-language error messages ---------- */
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -231,7 +236,7 @@ function draw(moveFocus) {
   document.body.dataset.area = m.r.area;
   try { $('#app').innerHTML = P.shells[m.r.area](m).s; }
   catch (err) { console.error(err); $('#app').innerHTML = '<main id="main"><h1>Sorry, this page could not be shown</h1><p><a href="#/admin">Go to the dashboard</a></p></main>'; }
-  document.title = `${P.title(m.r, m.params)} - MIRC ${S.conf.year} prototype`;
+  document.title = `${P.title(m.r, m.params)} - ${P.tag()} prototype`;
   if (moveFocus) { $('#main h1')?.focus(); window.scrollTo(0, 0); }
 }
 P.title = (r, params) => typeof r.title === 'function' ? r.title(params) : r.title;
@@ -262,17 +267,21 @@ P.sizeTools = () => html`<div class="textsize" role="group" aria-label="Text siz
   html`<button type="button" class="btn btn-small btn-ghost" data-act="density" data-v="${v}" aria-pressed="${String((document.documentElement.dataset.density || 'comfortable') === v)}">${l}</button>`)}</div>`;
 P.shells.admin = m => {
   const r = m.r, body = r.view(m.params);
-  return html`<header class="topbar on-dark"><a class="brand" href="#/admin">MIRC <span>Conference Manager</span></a>
-    <div class="topbar-tools">${P.editionPicker('Edition you are working on', true)}${P.sizeTools()}<a class="btn btn-gold" href="#/site">See the public website</a></div></header>
+  return html`<header class="topbar on-dark"><a class="brand" href="#/admin">${P.series().code} <span>Conference Manager</span></a>
+    <div class="topbar-tools">${P.editionPicker('Edition you are working on')}${P.sizeTools()}<a class="btn btn-gold" href="#/site">See the public website</a></div></header>
   <div class="layout"><button type="button" class="btn btn-secondary menu-toggle" data-act="menu" aria-expanded="${String(!!P.ui.menuOpen)}" aria-controls="sidenav">${P.ui.menuOpen ? 'Close menu' : 'Open menu'}</button>
     <nav id="sidenav" class="sidenav${P.ui.menuOpen ? ' open' : ''}" aria-label="Main menu">${navHTML(r)}</nav>
     <main id="main"><div class="main-in">${crumbs(r, m.params)}<h1 tabindex="-1">${P.title(r, m.params)}</h1>
       <div id="fb">${msgHTML()}</div>${body}${P.refBox(r)}</div></main></div>`;
 };
-/* The edition chooser. In the admin area it lists every edition; on the public site it lists only what the viewing role may see. */
-P.editionPicker = (label, all) => {
-  const list = ED.list.filter(e => all || P.canSeeEdition(e) || e.conf.id === ED.cur);
-  return html`<label class="inline edpick">${label} <select data-onchange="edswitch" data-fk="edpick">${list.map(e => html`<option value="${e.conf.id}" ${raw(e.conf.id === ED.cur ? 'selected' : '')}>MIRC ${e.conf.year} (${e.conf.status === 'published' ? 'published' : 'draft'})</option>`)}</select></label> ${P.badge(S.conf.status === 'published' ? 'Published' : 'Draft')}`;
+/* The edition chooser: a conference box and a year box. In the admin area it lists every edition; on the public site only what the viewing role may see. */
+const pickable = () => ED.list.filter(e => P.cur.r.area === 'admin' || P.canSeeEdition(e) || e.conf.id === ED.cur);
+P.editionPicker = (label) => {
+  const list = pickable(), cur = S.conf.series;
+  return html`<span role="group" aria-label="${label}" class="edpick-group"><label class="inline edpick">Conference <select data-onchange="edseries" data-fk="edseries">${Object.entries(CONFERENCES).filter(([k]) => list.some(e => e.conf.series === k)).map(([k, c]) =>
+      html`<option value="${k}" ${raw(k === cur ? 'selected' : '')}>${c.code}</option>`)}</select></label>
+    <label class="inline edpick">Year <select data-onchange="edswitch" data-fk="edpick">${list.filter(e => e.conf.series === cur).map(e =>
+      html`<option value="${e.conf.id}" ${raw(e.conf.id === ED.cur ? 'selected' : '')}>${e.conf.year} (${e.conf.status === 'published' ? 'published' : 'draft'})</option>`)}</select></label></span> ${P.badge(S.conf.status === 'published' ? 'Published' : 'Draft')}`;
 };
 P.canSeeEdition = e => e.conf.status === 'published' || ['Webmaster', 'Administrator'].includes(u('site.role', 'Guest'));
 P.notFound = { path: '*', area: 'admin', title: 'This page was not found', ref: 'n/a', note: 'Shown for any unknown address, with a way back.', view: () => html`<p class="lead">We could not find that page.</p><p><a class="btn btn-primary" href="#/admin">Go to the dashboard</a></p>` };
@@ -288,9 +297,13 @@ Object.assign(P.act, {
   dlgclose() { dlg().close(); },
   skip() { $('#main h1')?.focus(); },
   menu() { P.ui.menuOpen = !P.ui.menuOpen; P.refresh(); },
+  edseries(el) {   // another conference: keep the same year if it has one, else its newest
+    const mine = pickable().filter(e => e.conf.series === el.value);
+    P.act.edswitch({ value: (mine.find(e => e.conf.year === S.conf.year) || mine[mine.length - 1]).conf.id });
+  },
   edswitch(el) {
     P.useEdition(el.value);
-    const r = P.cur.r, text = `You are now looking at MIRC ${S.conf.year} (${S.conf.status === 'published' ? 'published' : 'draft'}). Everything you see and change belongs to this edition only.`;
+    const r = P.cur.r, text = `You are now looking at ${P.tag()} (${S.conf.status === 'published' ? 'published' : 'draft'}). Everything you see and change belongs to this edition only.`;
     if (Object.keys(P.cur.params).length && r.parent) P.goSay(r.parent, 'info', text);   // a page about one paper does not exist in the other edition
     else { P.refresh(); P.say('info', text); }
   },

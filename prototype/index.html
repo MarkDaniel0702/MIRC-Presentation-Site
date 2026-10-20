@@ -3,20 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MIRC conference manager (prototype)</title>
+  <title>Conference manager (prototype)</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <button type="button" class="skip" data-act="skip">Skip to the main content</button>
   <div class="proto-banner" role="note">
-    <p><strong>PROTOTYPE.</strong> All names, papers and numbers are <strong>sample data</strong>. Nothing is saved on a server or sent by email. Changes disappear when you reload this page.</p>
+    <p><strong>PROTOTYPE.</strong> All names, papers and numbers are <strong>sample data</strong>. Nothing is saved on a server or sent by email. Changes disappear when you reload this page, except the conferences you create under Conference › My conferences, which are kept in this browser.</p>
     <button type="button" id="reset" class="btn btn-small btn-secondary">Start over (reset the sample data)</button>
   </div>
   <div id="live" class="sr-only" role="status" aria-live="polite"></div>
   <div id="app"><noscript><p>This prototype needs JavaScript. Please turn it on in your browser.</p></noscript></div>
   <dialog id="dlg" aria-labelledby="dlg-title"></dialog>
   <!-- Classic scripts (not modules) so this page also works when opened straight from a folder. Order matters. -->
+  <script src="conferences.js"></script>
   <script src="data.js"></script>
   <script src="core.js"></script>
   <script src="calendar.js"></script>
@@ -24,6 +25,7 @@
   <script src="editions.js"></script>
   <script src="logo.js"></script>
   <script src="theme.js"></script>
+  <script src="conference-builder.js"></script>
   <script src="site.js"></script>
   <script>P.start();</script>
 </body>

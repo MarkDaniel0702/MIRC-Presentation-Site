@@ -1,4 +1,4 @@
-/* MIRC prototype: date helpers, the calendar picker and the 24-hour time picker.
+/* Conference prototype: date helpers, the calendar picker and the 24-hour time picker.
    One calendar widget serves three jobs:
    - a page calendar (Schedule): shows which days are conference days, which have events, and which one is chosen; clicking a day calls the action named in cfg.pick;
    - a form field (type: 'calendar'): one date, or several days with multi: true; the answer travels in a hidden box named after the field;

@@ -1,4 +1,4 @@
-/* MIRC prototype: color palette of the VISITOR website, one palette per conference edition (Website > Site colors).
+/* Conference prototype: color palette of the VISITOR website, one palette per conference edition (Website > Site colors).
    How it works: a palette is 8 colors (primary, secondary, accent, background, surface, text, button, border). P.theme.css() turns it into CSS variables
    (--t-*) on the .site wrapper of the public pages. styles.css maps them onto the existing palette variables inside .site only, so every component
    (header, menu, buttons, links, cards, forms, alerts, tables, footer) follows the palette without a color written into any component.
@@ -9,6 +9,7 @@
 'use strict';
 (() => {
   const DEFAULT = C.THEME_DEFAULT, NAVY = '#011030', WHITE = '#ffffff', BLACK = '#000000';
+  const base = () => ({ ...DEFAULT, ...P.series().theme });   // the "original" palette of the edition being worked on: its conference's own palette (conferences.js), else the shared default
   const FIELDS = [
     ['primary', 'Primary', 'Headings, links, tabs, and the outline of secondary buttons.'],
     ['secondary', 'Secondary', 'The navigation bar, the menu panel and the footer.'],
@@ -112,7 +113,7 @@
   const row = (st, [k, label, use]) => html`<div class="color-row${st.errs[k] ? ' has-error' : ''}"><div><label for="c-${k}-hex"><strong>${label}</strong></label><p class="hint" id="c-${k}-h">${use}</p></div>
     <div class="color-inputs"><input type="color" value="${st.colors[k]}" data-theme="${k}" data-kind="picker" aria-label="${label}: pick a color" class="color-pick">
       <input type="text" id="c-${k}-hex" value="${st.colors[k]}" data-theme="${k}" data-kind="hex" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="c-${k}-h c-${k}-e" ${raw(st.errs[k] ? 'aria-invalid="true"' : '')}>
-      <button type="button" class="btn btn-small btn-secondary" data-act="themeone" data-k="${k}" aria-label="${label}: use the default color ${DEFAULT[k]}">Default</button></div>
+      <button type="button" class="btn btn-small btn-secondary" data-act="themeone" data-k="${k}" aria-label="${label}: use the default color ${base()[k]}">Default</button></div>
     <p class="err" id="c-${k}-e">${st.errs[k] ? html`<span aria-hidden="true">✖</span> <strong>Problem:</strong> ${st.errs[k]}` : ''}</p></div>`;
   const dirty = st => !same(st.colors, S.settings.theme);
 
@@ -122,8 +123,8 @@
     ref: '9.3 palette; 9.4-9.6 roles of colors and contrast; 9.9 design tokens; 11.2 accessibility; 3.2 Website > Appearance (the live site has preset themes, not described)',
     note: 'Each edition has its own palette. The preview is the real set of site components, so what you see is what visitors get. Saved palettes live only in the browser tab (nothing is stored on a server). The administration area keeps its own colors. Contrast is measured with the WCAG 2.1 formula; warnings do not block saving, but the administrator must confirm.',
     view: () => {
-      const st = stage(), live = S.settings.theme, pend = S.settings.themePending, hist = S.settings.themeHistory || [], draftEd = S.conf.status === 'draft', isDefault = same(live, DEFAULT);
-      return html`<p class="lead">These are the colors visitors see on the website of <strong>MIRC ${S.conf.year}</strong> only. Other editions keep their own colors, and so does the administration area.</p>
+      const st = stage(), live = S.settings.theme, pend = S.settings.themePending, hist = S.settings.themeHistory || [], draftEd = S.conf.status === 'draft', isDefault = same(live, base());
+      return html`<p class="lead">These are the colors visitors see on the website of <strong>${P.tag()}</strong> only. Other editions keep their own colors, and so does the administration area.</p>
       <section class="card" aria-labelledby="th-cur"><h2 id="th-cur">Colors on the website now</h2>
         <div class="logo-row">${swatches(live)}<div><p><strong>${isDefault ? 'The original palette.' : 'A custom palette.'}</strong> ${S.conf.status === 'published' ? 'Visitors see it.' : 'Visitors will see it when the edition is published.'}</p>
           ${isDefault ? '' : html`<div class="actions"><button type="button" class="btn btn-secondary" data-act="themeorig">Restore the original palette on the website now</button></div>`}</div></div></section>
@@ -184,19 +185,19 @@
     if (bad.length && !await P.confirm({ title: 'Some colors are hard to read', ok: 'Yes, save them anyway', cancel: 'No, go back and change them', danger: true,
       text: html`These combinations are below the WCAG 2.1 minimum, so some visitors may not be able to read or see them:<ul>${bad.map(c => html`<li>${c.label} (${(Math.floor(c.r * 100) / 100).toFixed(2)} to 1, needs ${c.need} to 1)</li>`)}</ul>You can restore the original palette at any time.` })) return;
     const next = clean(st.colors);
-    if (mode === 'draft') { S.settings.themePending = next; P.themeStage = null; P.refresh(); return P.say('ok', `The draft colors were saved for MIRC ${S.conf.year}. Visitors keep the current colors. Use “Preview on the website” to check them, then publish them.`); }
+    if (mode === 'draft') { S.settings.themePending = next; P.themeStage = null; P.refresh(); return P.say('ok', `The draft colors were saved for ${P.tag()}. Visitors keep the current colors. Use “Preview on the website” to check them, then publish them.`); }
     retire(S.settings.theme); S.settings.theme = next; S.settings.themePending = null; P.themeStage = null; P.refresh();
-    P.say('ok', `The colors of MIRC ${S.conf.year} were saved.${S.conf.status === 'published' ? ' Visitors see them now.' : ' Visitors will see them when the edition is published.'} Open the public website to check the pages.`);
+    P.say('ok', `The colors of ${P.tag()} were saved.${S.conf.status === 'published' ? ' Visitors see them now.' : ' Visitors will see them when the edition is published.'} Open the public website to check the pages.`);
   };
   document.addEventListener('submit', e => { if (e.target.id === 'theme-form') { e.preventDefault(); apply(e.submitter ? e.submitter.value : 'save'); } });
 
   Object.assign(P.act, {
-    themeone(el) { const st = stage(), k = el.dataset.k; st.colors[k] = DEFAULT[k]; delete st.errs[k]; P.refresh(); $(`#c-${k}-hex`)?.focus(); },
-    themereset() { const st = stage(); st.colors = { ...DEFAULT }; st.errs = {}; P.refresh(); P.say('info', 'The default palette is loaded in the editor. It is not saved yet: press a Save button to use it, or Cancel to go back.'); },
+    themeone(el) { const st = stage(), k = el.dataset.k; st.colors[k] = base()[k]; delete st.errs[k]; P.refresh(); $(`#c-${k}-hex`)?.focus(); },
+    themereset() { const st = stage(); st.colors = base(); st.errs = {}; P.refresh(); P.say('info', 'The default palette is loaded in the editor. It is not saved yet: press a Save button to use it, or Cancel to go back.'); },
     themecancel() { P.themeStage = null; P.refresh(); P.say('info', 'Cancelled. The colors on the website have not been changed.'); },
     async themeorig() {
       if (!await P.confirm({ title: 'Restore the original palette?', ok: 'Yes, restore it', text: 'The website of this edition goes back to the original colors at once. Your current colors are kept under “Earlier palettes”.' })) return;
-      retire(S.settings.theme); S.settings.theme = { ...DEFAULT }; S.settings.themePending = null; P.themeStage = null; P.refresh(); P.say('ok', 'The original palette is back on the website.');
+      retire(S.settings.theme); S.settings.theme = base(); S.settings.themePending = null; P.themeStage = null; P.refresh(); P.say('ok', 'The original palette is back on the website.');
     },
     themeload(el) { const h = (S.settings.themeHistory || [])[+el.dataset.i]; if (!h) return; const st = stage(); st.colors = clean(h.theme); st.errs = {}; P.refresh(); $('#th-ed')?.focus(); P.say('info', `The earlier palette (replaced ${h.replacedAt}) is loaded in the editor. It is not saved yet.`); },
     themeedit() { const st = stage(); st.colors = clean(S.settings.themePending); st.errs = {}; P.refresh(); $('#th-ed')?.scrollIntoView({ block: 'start' }); P.say('info', 'The draft colors are loaded in the editor.'); },

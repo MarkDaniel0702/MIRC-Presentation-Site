@@ -1,10 +1,10 @@
-/* MIRC prototype: administration area (blueprint section 3, plus 4 and 10.4).
+/* Conference prototype: administration area (blueprint section 3, plus 4 and 10.4).
    Each P.add({...}) is one page. "ref" points at the blueprint section, "note" says what is simulated. */
 'use strict';
 
 P.groups = ['Conference', 'Papers and decisions', 'Reviewers', 'Attendees', 'Program', 'Email', 'Website', 'Help'];
 const GINFO = {
-  Conference: 'One website for every year: create the next edition, set its dates and topics, publish it when it is ready.',
+  Conference: 'One website for every conference and year: create a conference of your own, create the next edition, set its dates and topics, publish it when it is ready.',
   'Papers and decisions': 'Read the papers authors have sent in, accept or refuse them, and prepare the book of abstracts.',
   Reviewers: 'Choose who reviews which paper, and check that every paper has a reviewer.',
   Attendees: 'See who has registered, record payments, register someone, or add a new user account.',
@@ -14,7 +14,7 @@ const GINFO = {
   Help: 'Explanations, who can do what, and what this prototype does and does not do.',
 };
 const paperById = id => S.papers.find(p => p.id === id);
-const mailId = p => `mirc${S.conf.year}:` + p.id;
+const mailId = p => `${S.conf.id}:` + p.id;
 P.paperReviewers = p => S.reviewers.filter(r => r.topics.includes(p.topic) || r.papers.includes(p.id));
 const logP = (p, action, comment = '') => p.history.push({ date: today(), action, user: 'You (sample)', comment });
 const authorsOf = p => p.authors.map(a => a.name).join(', ');
@@ -42,7 +42,7 @@ P.add({
     const draft = S.conf.status === 'draft', ready = P.readiness(P.edition()), todo = [...ready.stop, ...ready.note];
     return html`
     <p class="lead">Choose a card below, or use the menu on the left. Every page has a “Dashboard” link at the top, so you can always come back here.</p>
-    <section class="card" aria-labelledby="ed-h"><h2 id="ed-h">Conference edition: MIRC ${S.conf.year} ${P.badge(draft ? 'Draft' : 'Published')}</h2>
+    <section class="card" aria-labelledby="ed-h"><h2 id="ed-h">Conference edition: ${P.tag()} ${P.badge(draft ? 'Draft' : 'Published')}</h2>
       <div class="logo-row">${P.logoHTML(S.settings.logo, 'md', true)}<div>${S.settings.logo ? '' : html`<p><strong>No logo yet.</strong> Upload one under Conference, “Logo”.</p>`}
       <p><strong>${P.datesText(S.conf.days)}</strong> · ${S.conf.place}${S.conf.venue ? ' · ' + S.conf.venue : ''}</p>
       <p>${draft ? 'Only the team can see this edition. Visitors cannot see it until you publish it.' : 'Visitors can see this edition. What you save is visible at once.'} Everything in this menu belongs to this edition only.</p>
@@ -361,7 +361,7 @@ Object.assign(P.act, {
   async regmail(el) {
     const r = regById(el.dataset.id);
     if (!await P.confirm({ title: 'Send the registration confirmation?', ok: 'Yes, record it', text: `A confirmation email to ${r.email} would be sent. In this prototype no email is sent; a line is added to “Sent emails”.` })) return;
-    P.logMail(`[MIRC ${S.conf.year}] Registration confirmation`, r.email, 'Registration confirmation (sample)'); P.say('ok', `A confirmation to ${r.email} was recorded in “Sent emails”. No real email was sent.`);
+    P.logMail(`[${P.tag()}] Registration confirmation`, r.email, 'Registration confirmation (sample)'); P.say('ok', `A confirmation to ${r.email} was recorded in “Sent emails”. No real email was sent.`);
   },
   async regedit(el) {
     const r = regById(el.dataset.id);
@@ -787,7 +787,7 @@ P.add({
     return html`${P.tabs('set.tab', [['general', 'Languages and contact'], ['header', 'Header'], ['look', 'Banner'], ['colors', 'Colors']], 'Settings sections', tab)}
       ${tab === 'general' ? html`<section class="card"><h2>Languages and contact</h2>${P.formHTML('set-general', S.settings)}</section>`
       : tab === 'header' ? html`<section class="card"><h2>Header</h2><p>The top part of the public website. The logo and where it appears are managed under <a href="#/admin/logo">Conference, Logo</a>; the title below is independent of the logo.</p>${P.formHTML('set-header', S.settings.header)}</section>`
-      : tab === 'look' ? html`<section class="card"><h2>Banner</h2><p>This belongs to <strong>MIRC ${S.conf.year}</strong> only. The logo and title are on the “Header” tab; the colors are under <a href="#/admin/colors">Site colors</a>.</p>${P.formHTML('set-look', { banner: S.conf.banner })}</section>`
+      : tab === 'look' ? html`<section class="card"><h2>Banner</h2><p>This belongs to <strong>${P.tag()}</strong> only. The logo and title are on the “Header” tab; the colors are under <a href="#/admin/colors">Site colors</a>.</p>${P.formHTML('set-look', { banner: S.conf.banner })}</section>`
         : html`<section class="card"><h2>Colors used on this website</h2><p>This table is the <strong>original palette</strong>, the starting point of every edition. “Exact” means the value was measured on a flat area. “Estimate” means it was measured on a gradient or photo (blueprint section 9.3). To change the colors visitors see, use <a href="#/admin/colors">Site colors</a>.</p>
         ${P.table({ caption: 'Color palette', empty: '', rows: C.PALETTE, cols: [{ h: 'Sample', v: c => html`<span class="swatch" style="background:${c[1]}" aria-hidden="true"></span>` }, { h: 'Name', v: c => c[0] }, { h: 'Code', v: c => c[1] }, { h: 'How sure', v: c => c[2] === 'exact' ? 'Exact' : 'Estimate' }, { h: 'Used for', v: c => c[3] }] })}</section>`}`;
   },

@@ -1,4 +1,4 @@
-/* MIRC prototype styles. Colors are the blueprint palette (section 9.3): five EXACT values and a few ESTIMATES.
+/* Conference prototype styles. Colors are the blueprint palette (section 9.3): five EXACT values and a few ESTIMATES.
    Only pairs that pass the contrast checks in blueprint 9.5 are used for text. Sizes are in rem so the text-size buttons scale everything. */
 :root {
   --slate-green: #2f4f4f; --forest: #296334; --leaf: #297d1f; --navy: #011030; --deep-green: #0f3416; --white: #ffffff;
@@ -185,6 +185,7 @@ dialog::backdrop { background: rgba(1, 16, 48, .65); }
 /* public website preview */
 .sitebar { background: var(--navy); } .sitebar-in { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; padding: .6rem 1.25rem; }
 .sitebar label.inline, .edpick { display: flex; flex-wrap: wrap; gap: .25rem .5rem; align-items: center; } .sitebar select, .topbar select { width: auto; min-width: min(11rem, 100%); max-width: 100%; }
+.edpick-group { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: flex-end; } .edpick-group .edpick { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; }   /* conference box and year box: label above, side by side while they fit */
 .topbar-tools > .badge { margin-left: -.25rem; }
 .draft-strip { margin: 0; padding: .5rem 1.25rem; background: var(--gold-300); color: var(--navy); text-align: center; }
 .site-banner { margin: 0; padding: .6rem 1.25rem; background: var(--forest); color: var(--white); text-align: center; font-weight: 700; }

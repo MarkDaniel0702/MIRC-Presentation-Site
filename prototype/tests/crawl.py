@@ -17,8 +17,8 @@ with sync_playwright() as p:
     paths = [fill(r) for r in routes]
     known = pg.evaluate(r"P.routes.map(r => r.path.replace(/:\w+/g,'[^/]+'))")
     acts = pg.evaluate("Object.keys(P.act)"); forms = pg.evaluate("Object.keys(P.formDefs)")
-    # every page of every edition: the 2026 sample, then the empty 2027 draft (only the team can open a draft, so use Administrator there)
-    for edition, role in (("mirc2026", "Guest"), ("mirc2026", "Participant"), ("mirc2027", "Administrator")):
+    # every page of every edition: the 2026 sample, then the empty MIRC 2027 draft and PANTAS 2026 (only the team can open a draft, so use Administrator there)
+    for edition, role in (("mirc2026", "Guest"), ("mirc2026", "Participant"), ("mirc2027", "Administrator"), ("pantas2026", "Guest"), ("pantas2026", "Administrator")):
         pg.evaluate(f"P.useEdition('{edition}')")
         pg.evaluate(f"P.ui['site.role']='{role}'")
         for path in paths:

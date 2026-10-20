@@ -1,4 +1,4 @@
-/* MIRC prototype: logo management for each conference edition (Conference > Logo).
+/* Conference prototype: logo management for each conference edition (Conference > Logo).
    One standard square frame (P.logoHTML) is used everywhere a logo is shown, so every edition looks the same whatever file it uploads.
    The picture is never stretched: it is fitted inside the frame ("whole logo") or fills it ("crop"), and the position and zoom are stored
    as settings next to the file (non-destructive: the original is kept).
@@ -129,12 +129,12 @@
     note: 'The file is read in the browser and shown from a temporary address, so the checks, preview, crop and the save/publish steps are real, but nothing is uploaded or stored: the logo disappears on reload. The checks (real file type, size, pixels, SVG safety) run in the browser and could be bypassed, so the real site must repeat them on the server. Each edition has its own logo; a new edition starts with none.',
     view: () => {
       const L = S.settings.logo, pend = S.settings.logoPending, st = stage(), err = P.logoErr, draftEd = S.conf.status === 'draft', place = S.settings.header.logoPlace;
-      return html`<p class="lead">The logo of <strong>MIRC ${S.conf.year}</strong> belongs to this edition only. Changing it never changes another year. The title and theme are set separately (<a href="#/admin/settings">Site settings</a>, <a href="#/admin/edition">Edition details</a>).</p>
+      return html`<p class="lead">The logo of <strong>${P.tag()}</strong> belongs to this edition only. Changing it never changes another year. The title and theme are set separately (<a href="#/admin/settings">Site settings</a>, <a href="#/admin/edition">Edition details</a>).</p>
       ${!quick() ? html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> The header of this edition is not in “quick form” (see Site settings, Header), so the header does not show this logo. The home page and the menu bar still do.</div></div>` : ''}
       <section class="card" aria-labelledby="lg-cur"><h2 id="lg-cur">Current logo</h2>
         ${L ? html`<div class="logo-row">${P.logoHTML(L, 'lg')}<div><p><strong>${S.conf.status === 'published' ? 'Visitors see this logo.' : 'Not visible to visitors yet (the edition is a draft).'}</strong></p><p class="muted">${meta(L)}</p><p class="muted">Text for screen readers: “${L.alt}”</p>
           <div class="actions"><button type="button" class="btn btn-secondary" data-act="logorep">Replace the logo</button><button type="button" class="btn btn-secondary" data-act="logodel">Remove the logo</button></div></div></div>`
-          : html`<p class="empty">MIRC ${S.conf.year} has no logo yet. Choose a file below.</p>`}</section>
+          : html`<p class="empty">${P.tag()} has no logo yet. Choose a file below.</p>`}</section>
       ${pend ? html`<section class="card" aria-labelledby="lg-pend"><h2 id="lg-pend">Draft logo waiting to be published</h2><div class="logo-row">${P.logoHTML(pend, 'lg')}<div><p>Visitors still see the current logo. The team sees this one when previewing the website.</p><p class="muted">${meta(pend)}</p>
         <div class="actions"><button type="button" class="btn btn-gold" data-act="logopub">Publish this logo now</button><a class="btn btn-secondary" href="#/site" data-act="logoprev">Preview on the website</a><button type="button" class="btn btn-secondary" data-act="logodisc">Discard this draft logo</button></div></div></div></section>` : ''}
       <section class="card" aria-labelledby="lg-up"><h2 id="lg-up">Choose a new logo</h2><p>Requirements, before you choose a file:</p>${specs()}
@@ -152,7 +152,7 @@
             <div class="field"><label for="lg-y">Up and down: <output id="lg-y-o">${st.y}%</output></label><input id="lg-y" type="range" min="0" max="100" step="1" value="${st.y}" data-logo="y"></div>
             <p class="hint">Zoom in, then move the logo until the part you want is in the square. The whole logo stays visible at 100% zoom unless you choose “Fill the frame”.</p>
             <button type="button" class="btn btn-secondary btn-small" data-act="logoreset">Reset fit and position</button>
-            <div class="field${st.altErr ? ' has-error' : ''}"><label for="f-alt">Text for people who cannot see the picture <span class="req">(required)</span></label><p class="hint" id="f-alt-h">Say what the logo shows, for example “MIRC ${S.conf.year} logo”. Screen readers read this.</p>
+            <div class="field${st.altErr ? ' has-error' : ''}"><label for="f-alt">Text for people who cannot see the picture <span class="req">(required)</span></label><p class="hint" id="f-alt-h">Say what the logo shows, for example “${P.tag()} logo”. Screen readers read this.</p>
               <input id="f-alt" name="alt" type="text" value="${st.alt}" maxlength="120" data-logo="alt" aria-describedby="f-alt-h${st.altErr ? ' f-alt-e' : ''}" ${raw(st.altErr ? 'aria-invalid="true"' : '')}>${st.altErr ? html`<p class="err" id="f-alt-e"><span aria-hidden="true">✖</span> <strong>Problem:</strong> ${st.altErr}</p>` : ''}</div></div></div>
           <div class="actions">${draftEd ? html`<button class="btn btn-primary" type="submit" value="save">Save this logo</button>`
             : html`<button class="btn btn-primary" type="submit" value="publish">Publish this logo now</button><button class="btn btn-secondary" type="submit" value="draft">Save as a draft (visitors keep the current logo)</button>`}
@@ -169,7 +169,7 @@
       const r = await check(file);
       drop();
       if (r.errors.length) { P.logoErr = { name: file.name, errors: r.errors }; P.refresh(); return P.say('error', 'That file cannot be used, and the logo has not been changed. The reasons are listed under “Choose a new logo”.'); }
-      P.logoStage = fresh(r.logo, { ed: ED.cur, warnings: r.warnings, alt: `MIRC ${S.conf.year} logo` });
+      P.logoStage = fresh(r.logo, { ed: ED.cur, warnings: r.warnings, alt: `${P.tag()} logo` });
       P.refresh(); $('#lg-prev')?.focus();
       P.say('info', `“${file.name}” meets the requirements. Check the preview, then save. Nothing is saved yet.`);
     },
@@ -177,7 +177,7 @@
     logoreset() { const s = stage(); if (!s) return; Object.assign(s, { fit: 'contain', zoom: 1, x: 50, y: 50 }); P.refresh(); },
     logocancel() { drop(); P.refresh(); P.say('info', 'Cancelled. The current logo has not been changed.'); },
     async logodel() {
-      if (!await P.confirm({ title: 'Remove the logo?', danger: true, ok: 'Yes, remove it', text: `MIRC ${S.conf.year} will have no logo until you upload another one. Other editions are not touched.` })) return;
+      if (!await P.confirm({ title: 'Remove the logo?', danger: true, ok: 'Yes, remove it', text: `${P.tag()} will have no logo until you upload another one. Other editions are not touched.` })) return;
       forget(S.settings.logo); S.settings.logo = null; P.refresh(); P.say('ok', 'The logo was removed.');
     },
     async logodisc() { forget(S.settings.logoPending); S.settings.logoPending = null; P.refresh(); P.say('ok', 'The draft logo was discarded. The current logo is unchanged.'); },
@@ -205,7 +205,7 @@
     const fileId = 'f' + Date.now(), logo = { name: s.name, kind: s.kind, mime: s.mime, bytes: s.bytes, w: s.w, h: s.h, url: s.url, alt, fit: s.fit, zoom: s.zoom, x: s.x, y: s.y, fileId };
     S.files.push({ id: fileId, title: s.name, folder: 'header', ext: s.name.split('.').pop().toLowerCase(), size: fmtSize(s.bytes), logo: true });   // listed in "Files and pictures", like every uploaded file
     P.logoStage = null; P.logoErr = null;                      // the picture now belongs to the edition: do not revoke its address
-    if (mode === 'draft') { forget(S.settings.logoPending); S.settings.logoPending = logo; P.refresh(); P.say('ok', `The draft logo was saved for MIRC ${S.conf.year}. Visitors keep seeing the current logo. Use “Preview on the website” to check it, then publish it.`); }
-    else { forget(S.settings.logo); S.settings.logo = logo; P.refresh(); P.say('ok', `The logo of MIRC ${S.conf.year} was saved.${S.conf.status === 'published' ? ' Visitors see it now.' : ' Visitors will see it when the edition is published.'} Open the public website to check the header.`); }
+    if (mode === 'draft') { forget(S.settings.logoPending); S.settings.logoPending = logo; P.refresh(); P.say('ok', `The draft logo was saved for ${P.tag()}. Visitors keep seeing the current logo. Use “Preview on the website” to check it, then publish it.`); }
+    else { forget(S.settings.logo); S.settings.logo = logo; P.refresh(); P.say('ok', `The logo of ${P.tag()} was saved.${S.conf.status === 'published' ? ' Visitors see it now.' : ' Visitors will see it when the edition is published.'} Open the public website to check the header.`); }
   });
 })();

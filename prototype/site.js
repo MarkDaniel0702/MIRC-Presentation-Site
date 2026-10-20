@@ -1,4 +1,4 @@
-/* MIRC prototype: public website preview (blueprint section 2 and 10). Shows the edition chosen in the bar; draft editions are visible only to the team.
+/* Conference prototype: public website preview (blueprint section 2 and 10). Shows the edition chosen in the bar; draft editions are visible only to the team.
    The menu follows the Pages module (admin), so changing a page's rights changes what each "Viewing as" role sees. */
 'use strict';
 
@@ -24,7 +24,7 @@ function siteHead(logo = P.shownLogo()) {   // logo: the one to show (the editor
   if (h.type === HTYPES[2]) return html`<p class="hdr-pic">Header picture: ${h.picture || '(none chosen)'} <span class="muted">(sample: the picture file is not included)</span></p>`;
   const meta = [h.showPlace === 'yes' && c.place, h.showDate === 'yes' && P.datesText(c.days)].filter(Boolean).join(' · ');
   return html`<div class="hdr-quick">${logo && h.logoPlace === 'in the header' ? P.logoHTML(logo, 'lg') : ''}
-    <div><p class="hero-mark small" aria-hidden="true">${c.year} MIRC</p><p class="site-name">${h.title}</p>${h.subtitle ? html`<p>${h.subtitle}</p>` : ''}${meta ? html`<p class="hdr-meta">${meta}</p>` : ''}</div></div>`;
+    <div><p class="hero-mark small" aria-hidden="true">${c.year} ${P.series().code}</p><p class="site-name">${h.title}</p>${h.subtitle ? html`<p>${h.subtitle}</p>` : ''}${meta ? html`<p class="hdr-meta">${meta}</p>` : ''}</div></div>`;
 }
 P.siteHead = siteHead;
 /* The signed-in menu holds the person's own pages (submissions, registration, account details) and Log out, plus the Administration area for team roles.
@@ -38,20 +38,20 @@ const userMenu = () => role() === 'Guest' ? html`<a class="btn btn-ghost" href="
 
 const siteBar = () => html`<div class="sitebar on-dark"><div class="sitebar-in"><strong>Public website preview</strong>
     <label class="inline">Viewing as <select data-ui="site.role" data-fk="site.role">${C.ROLES.map(x => html`<option ${raw(role() === x ? 'selected' : '')}>${x}</option>`)}</select></label>
-    ${P.editionPicker('Conference edition', false)}
+    ${P.editionPicker('Conference edition')}
     ${P.sizeTools()}<a class="btn btn-gold btn-small" href="#/admin">Back to the administration area</a></div></div>`;
 /* A draft edition is for the team only: everyone else gets this page and none of the edition's content. */
 const notPublished = () => {
-  const latest = [...ED.list].reverse().find(e => e.conf.status === 'published');
+  const latest = P.latest();
   return html`${siteBar()}<main id="main"><div class="main-in"><h1 tabindex="-1">This conference page is not published yet</h1>
-    <div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> MIRC ${S.conf.year} is still being prepared. ${latest ? 'You can look at an earlier edition instead.' : 'No conference edition is published yet.'} (Team members: use “Viewing as” at the top and choose Webmaster or Administrator to preview a draft.)</div></div>
-    ${latest ? html`<p><button type="button" class="btn btn-primary" data-act="edlatest">Open MIRC ${latest.conf.year}</button></p>` : ''}</div></main>`;
+    <div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> ${P.tag()} is still being prepared. ${latest ? 'You can look at an earlier edition instead.' : 'No conference edition is published yet.'} (Team members: use “Viewing as” at the top and choose Webmaster or Administrator to preview a draft.)</div></div>
+    ${latest ? html`<p><button type="button" class="btn btn-primary" data-act="edlatest">Open ${P.tag(latest)}</button></p>` : ''}</div></main>`;
 };
 P.shells.site = m => {
   if (!P.canSeeEdition(P.edition())) return notPublished();
   const r = m.r, body = r.view(m.params), t = P.title(r, m.params), parts = [P.pendingShown() && 'logo', P.themePendingShown() && 'colors'].filter(Boolean);
   return html`${siteBar()}
-  ${S.conf.status === 'draft' ? html`<p class="draft-strip" role="note"><strong>Draft preview.</strong> Visitors cannot see MIRC ${S.conf.year} yet. Publish it under “Editions (years)” in the administration area.</p>` : ''}
+  ${S.conf.status === 'draft' ? html`<p class="draft-strip" role="note"><strong>Draft preview.</strong> Visitors cannot see ${P.tag()} yet. Publish it under “Editions (years)” in the administration area.</p>` : ''}
   ${parts.length ? html`<p class="draft-strip" role="note"><strong>Branding preview.</strong> This edition has a draft ${parts.join(' and ')} that visitors cannot see yet. Publish ${parts.length > 1 ? 'them' : 'it'} under Conference, “Logo”, or Website, “Site colors”.</p>` : ''}
   <div class="site" style="${P.theme.css(P.shownTheme())}">
   ${S.conf.banner ? html`<p class="site-banner" role="note">${S.conf.banner}</p>` : ''}
@@ -74,7 +74,7 @@ Object.assign(P.act, {
   drawer() { $('#drawer').showModal(); },
   drawerclose() { $('#drawer').close(); },
   drawerbackdrop(el, e) { if (e.target === el) el.close(); },
-  edlatest() { P.useEdition([...ED.list].reverse().find(e => e.conf.status === 'published').conf.id); P.go('/site'); },
+  edlatest() { P.useEdition(P.latest().conf.id); P.go('/site'); },
 });
 
 const restricted = pg => html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> The page “${pg.title}” is not open to the role “${role()}”. On the real site this menu item is simply hidden. Use “Viewing as” at the top to try another role, or change the rights under “Pages and menu” in the administration area.</div></div>`;
@@ -88,7 +88,7 @@ const needSignIn = what => html`<div class="alert alert-info"><span class="sym" 
 
 /* ---- Home ---- */
 site('/site', () => pageTitle('home', 'Home'), '2.2 Home; 10.3 Home structure; 9.6 Hero', gate('home', 'Home', () => html`
-  <section class="hero card">${S.settings.header.logoPlace !== 'no' && P.shownLogo() ? html`<div class="hero-logo">${P.logoHTML(P.shownLogo(), 'md', true)}</div>` : ''}<p class="hero-mark" aria-hidden="true">${S.conf.year} MIRC</p><p class="tagline">${S.conf.tagline}</p>${S.conf.sub ? html`<p>${S.conf.sub}</p>` : ''}
+  <section class="hero card">${S.settings.header.logoPlace !== 'no' && P.shownLogo() ? html`<div class="hero-logo">${P.logoHTML(P.shownLogo(), 'md', true)}</div>` : ''}<p class="hero-mark" aria-hidden="true">${S.conf.year} ${P.series().code}</p><p class="tagline">${S.conf.tagline}</p>${S.conf.sub ? html`<p>${S.conf.sub}</p>` : ''}
     <p class="facts">${P.datesText(S.conf.days)}${S.conf.venue ? ' · ' + S.conf.venue : ''}</p>
     <div class="actions center"><a class="btn btn-gold" href="#/site/registration">${S.settings.registrationOpen ? 'Register' : 'Registration (closed)'}</a><a class="btn btn-secondary" href="#/site/submit">Abstract submission (${S.settings.submissionOpen ? 'open' : 'closed'})</a></div></section>
   ${S.homeBlocks.map(b => html`<section class="card"><h2>${b.title}</h2>${P.text(b.body)}</section>`)}
@@ -148,7 +148,7 @@ site('/site/registration', () => pageTitle('registration', 'Registration'), '2.5
   if (done) return html`<section class="card"><h2>Your registration</h2><dl class="dl">${[['Name', `${done.title} ${done.first} ${done.middle} ${done.last}`], ['Email', done.email], ['Language', done.language], ['Phone', done.phone], ['Institution', done.institution], ['Address', done.address], ['Country', done.country], ['Status', done.status]].map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
     <p>The new person now appears under “Registered people” in the administration area.</p><button type="button" class="btn btn-secondary" data-act="setui" data-k="site.regDone" data-v="">Register another person</button></section>`;
   const dl = S.conf.registrationDeadline ? `The registration deadline is ${P.fmtDate(S.conf.registrationDeadline)}. ` : 'The registration deadline has not been announced yet. ';
-  if (!S.settings.registrationOpen) return html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> Registration for MIRC ${S.conf.year} is not open. ${dl}The administrators open it under “Edition details”, “Dates and deadlines”.</div></div>`;
+  if (!S.settings.registrationOpen) return html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> Registration for ${P.tag()} is not open. ${dl}The administrators open it under “Edition details”, “Dates and deadlines”.</div></div>`;
   return html`<div class="alert alert-info"><span class="sym" aria-hidden="true">i</span><div><strong>Note.</strong> ${dl}On the live site you sign in first; here anyone can try the form. The form fields are the ones shown on the live site's saved-registration page. Fees and payment are not defined yet (blueprint decision D5).</div></div>
     <section class="card"><h2>Registration form</h2>${P.formHTML('site-register', {})}</section>`;
 }), { note: 'Saving adds a “Pre-registered” person to the administration list. The empty form on the live site was not seen, so the fields are those of the saved recap.' });
@@ -180,7 +180,7 @@ P.defForm('site-account', {
   run: () => P.say('info', 'Preview only. The fields of the real “Edit account” page were not seen on the live site.'),
 });
 account({ path: '/site/account', t: 'Edit account' }, '2.6 Edit account (form not opened in the observation: fields are assumed)', () => html`<section class="card"><h2>Your details</h2>${P.formHTML('site-account', { last: 'Sample', first: 'Person', email: 'person@example.org', language: 'English' })}</section>`);
-account({ path: '/site/my-registration', t: 'My registration' }, '2.5, 2.6 My registration', () => { const r = S.registrations[0]; if (!r) return html`<p class="empty">You have not registered for MIRC ${S.conf.year} yet. <a href="#/site/registration">Open the registration page</a>.</p>`; return html`<section class="card"><h2>Your registration (sample person)</h2><p>${P.badge(r.status)}</p><p>${r.title} ${r.first} ${r.last}, ${r.institution}</p><p><a href="#/site/registration">Open the registration page</a></p></section>`; });
+account({ path: '/site/my-registration', t: 'My registration' }, '2.5, 2.6 My registration', () => { const r = S.registrations[0]; if (!r) return html`<p class="empty">You have not registered for ${P.tag()} yet. <a href="#/site/registration">Open the registration page</a>.</p>`; return html`<section class="card"><h2>Your registration (sample person)</h2><p>${P.badge(r.status)}</p><p>${r.title} ${r.first} ${r.last}, ${r.institution}</p><p><a href="#/site/registration">Open the registration page</a></p></section>`; });
 account({ path: '/site/my-submissions', t: 'My submissions' }, '2.6 My submissions (the live site showed “page not found” for this account)', () => html`<p class="empty">You have not sent any paper. The submission period is closed.</p>`);
 
 Object.assign(P.act, {

@@ -1,5 +1,6 @@
-/* MIRC prototype: constants and SAMPLE data.
+/* Conference prototype: constants and SAMPLE data.
    C = lists taken from the blueprint (sections 4, 5, 9). MIRC_2026 = invented sample records, not real people.
+   Conference names, places and themes are NOT here: they live in conferences.js (CONFERENCES).
    EDITIONS (bottom of file) is the list of conference editions. Each edition holds ALL of its own data, so editions never overwrite each other. Later editions are made with P.newEdition() in editions.js.
    Classic script (no modules) so the prototype opens straight from the file system. */
 
@@ -38,14 +39,15 @@ const C = {
 };
 
 /* A drawn placeholder logo (palette colors), so the prototype shows a real picture without any real logo file. */
-const sampleLogo = year => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><circle cx="300" cy="300" r="288" fill="#296334" stroke="#e1ca5e" stroke-width="14"/><text x="300" y="290" font-family="Arial, sans-serif" font-size="150" font-weight="800" fill="#ffffff" text-anchor="middle">MIRC</text><text x="300" y="425" font-family="Arial, sans-serif" font-size="125" font-weight="800" fill="#e1ca5e" text-anchor="middle">${year}</text></svg>`;
-  return { name: `mirc-${year}-logo-sample.svg`, kind: 'svg', mime: 'image/svg+xml', bytes: svg.length, w: 600, h: 600, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-    alt: `MIRC ${year} logo (sample placeholder)`, fit: 'contain', zoom: 1, x: 50, y: 50, fileId: 'f2', sample: true };
+const sampleLogo = (key, year) => {
+  const k = CONFERENCES[key], t = { ...C.THEME_DEFAULT, ...k.theme }, fs = Math.min(150, Math.floor(520 / (k.code.length * .75)));   // long codes get a smaller font
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><circle cx="300" cy="300" r="288" fill="${t.primary}" stroke="${t.accent}" stroke-width="14"/><text x="300" y="290" font-family="Arial, sans-serif" font-size="${fs}" font-weight="800" fill="#ffffff" text-anchor="middle">${k.code}</text><text x="300" y="425" font-family="Arial, sans-serif" font-size="125" font-weight="800" fill="${t.accent}" text-anchor="middle">${year}</text></svg>`;
+  return { name: `${key}-${year}-logo-sample.svg`, kind: 'svg', mime: 'image/svg+xml', bytes: svg.length, w: 600, h: 600, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+    alt: `${k.code} ${year} logo (sample placeholder)`, fit: 'contain', zoom: 1, x: 50, y: 50, fileId: 'f2', sample: true };
 };
 
 const MIRC_2026 = (() => {
-  const DAYS = ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'], YEAR = 2026;
+  const DAYS = ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30'], YEAR = 2026, KEY = 'mirc', K = CONFERENCES[KEY];
   const first = ['Ana', 'Ben', 'Carla', 'Dev', 'Elena', 'Farid', 'Gina', 'Hugo', 'Iris', 'Jon', 'Kira', 'Leo'];
   const last = ['Alvarez', 'Brooks', 'Chen', 'Dumont', 'Egan', 'Faulkner', 'Garcia', 'Hale', 'Ito', 'Jensen', 'Kaur', 'Lopez'];
   const person = i => ({ first: first[i % 12], last: last[(i * 5 + 3) % 12] });
@@ -144,7 +146,7 @@ const MIRC_2026 = (() => {
   pages.forEach(p => { p.body = bodies[p.slug] || ''; });
 
   const tpl = (id, group, name) => {
-    const subject = `[MIRC ${YEAR}] ${name}`, body = `Dear participant,\n\n(Sample text for "${name}". The real wording is not part of the blueprint.)\n\nKind regards,\nThe organizing team`;
+    const subject = `[${K.code} ${YEAR}] ${name}`, body = `Dear participant,\n\n(Sample text for "${name}". The real wording is not part of the blueprint.)\n\nKind regards,\nThe organizing team`;
     return { id, group, name, subject, body, originalSubject: subject, originalBody: body };
   };
   const templates = [
@@ -156,29 +158,29 @@ const MIRC_2026 = (() => {
 
   return {
     // conf = what makes this edition different: identity, dates and deadlines, branding. days = every conference day, in order.
-    conf: { id: 'mirc2026', year: YEAR, status: 'published', name: 'Manila International Research Conference 2026', place: 'Manila (Philippines)', venue: 'Pamantasan ng Lungsod ng Maynila (PLM)',
-      tagline: 'Shaping Resilient Futures', sub: 'AI, Sustainability, and Inclusive Innovation', days: DAYS,
+    conf: { id: KEY + YEAR, series: KEY, year: YEAR, status: 'published', name: `${K.name} ${YEAR}`, place: K.place, venue: K.venue,
+      tagline: K.tagline, sub: K.sub, days: DAYS,
       submission: { open: '2026-05-13', close: '2026-09-20' }, registrationDeadline: '2026-08-20', banner: '' },
     topics: [...C.TOPICS],
     papers, users, registrations, reviewers, rooms, events, pages,
-    homeBlocks: [{ id: 'h1', title: 'Conference Overview', body: 'The Manila International Research Conference 2026 (MIRC 2026) is a hybrid international academic conference. It brings together researchers, academicians, practitioners, policymakers and students to present and discuss research on AI, sustainability and innovation.\n\nThe main conference is held on 29-30 September 2026 at the PLM campus. A sub-conference on Hospitality and Tourism is held on 27 September 2026 at the DLSU-CSB campus.' }],
+    homeBlocks: [{ id: 'h1', title: 'Conference Overview', body: `The ${K.name} ${YEAR} (${K.code} ${YEAR}) is a hybrid international academic conference. It brings together researchers, academicians, practitioners, policymakers and students to present and discuss research on AI, sustainability and innovation.\n\nThe main conference is held on 29-30 September 2026 at the PLM campus. A sub-conference on Hospitality and Tourism is held on 27 September 2026 at the DLSU-CSB campus.` }],
     news: [],
     files: [
       { id: 'f1', title: 'program.css', folder: 'css', ext: 'css', size: '0 B' },
-      { id: 'f2', title: 'mirc-2026-logo-sample.svg', folder: 'header', ext: 'svg', size: '1 KB', logo: true },
+      { id: 'f2', title: `${KEY}-${YEAR}-logo-sample.svg`, folder: 'header', ext: 'svg', size: '1 KB', logo: true },
       { id: 'f3', title: 'sponsor-logo-1.jpg', folder: 'pages', ext: 'jpg', size: '48 KB' },
       { id: 'f4', title: 'themes-screenshot.png', folder: 'pages', ext: 'png', size: '310 KB' },
     ],
     settings: {
       languages: ['English'], defaultLanguage: 'English', contactEmail: 'contact@example.org',
-      header: { type: 'Header quick form configuration', title: 'Manila International Research Conference 2026', subtitle: '', logoPlace: 'in the header', showDate: 'yes', showPlace: 'yes', html: '<p>Custom header HTML</p>', picture: 'header-logo.png' },
+      header: { type: 'Header quick form configuration', title: `${K.name} ${YEAR}`, subtitle: '', logoPlace: 'in the header', showDate: 'yes', showPlace: 'yes', html: '<p>Custom header HTML</p>', picture: 'header-logo.png' },
       theme: { ...C.THEME_DEFAULT }, themePending: null, themeHistory: [],
-      logo: sampleLogo(YEAR), logoPending: null,   // each edition has its own logo (see logo.js); this one is a drawn placeholder, not the real logo
+      logo: sampleLogo(KEY, YEAR), logoPending: null,   // each edition has its own logo (see logo.js); this one is a drawn placeholder, not the real logo
       showPapers: 'yes', registrationOpen: true, submissionOpen: false,
       regFields: Object.fromEntries(C.REG_OPTIONAL.map(([k]) => [k, 'optional'])),
     },
-    templates, lists: [], aliases: [{ id: 'a1', name: 'mirc2026', content: '' }], mailLog: [],
-    mailLook: { header: '<p style="margin:0;padding:8px;background:#E8F1E6;color:#2F4F4F">MIRC 2026 (sample email header)</p>', font: 'Sans-serif', footer: 'Standard' },
+    templates, lists: [], aliases: [{ id: 'a1', name: KEY + YEAR, content: '' }], mailLog: [],
+    mailLook: { header: `<p style="margin:0;padding:8px;background:#E8F1E6;color:#2F4F4F">${K.code} ${YEAR} (sample email header)</p>`, font: 'Sans-serif', footer: 'Standard' },
     rightsGroups: { Webmaster: 1, Administrative: 1, Reviewer: reviewers.length, Redactor: 1, Administrator: 2, Coordinator: 1 },
   };
 })();
